@@ -23,6 +23,7 @@
 #include <ntboot.h>
 #include <acpi.h>
 #include <efi.h>
+#include <efidisk.h>
 #include <efi/Protocol/GraphicsOutput.h>
 
 static void *
@@ -124,26 +125,58 @@ acpi_get_bgrt (struct acpi_table_header *xsdt)
 }
 
 static void
-acpi_calc_bgrt_xy (struct bmp_header *bmp, uint32_t *x, uint32_t *y)
+efi_gop_get_best_mode (uint32_t *w, uint32_t *h)
 {
   EFI_GRAPHICS_OUTPUT_PROTOCOL* gop = 0;
   EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
   EFI_STATUS status;
-  uint32_t screen_width = 1024;
-  uint32_t screen_height = 768;
+  uint32_t mode, max_val = 0, val;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info = 0;
+  UINTN size;
+
+  *w = 1024;
+  *h = 768;
+  status = bs->LocateProtocol (&efi_graphics_output_protocol_guid,
+                               NULL, (void **) &gop);
+  if (status != EFI_SUCCESS)
+  {
+    DBG ("Graphics Output Protocol not found.\n");
+    return;
+  }
+
+  DBG ("%d modes detected.\n", gop->Mode->MaxMode);
+  for (mode = 0; mode < gop->Mode->MaxMode; mode++)
+  {
+    status = gop->QueryMode (gop, mode, &size, &info);
+    if (status != EFI_SUCCESS)
+    {
+      info = 0;
+      continue;
+    }
+
+    DBG ("mode %d: %dx%d\n", mode,
+         info->HorizontalResolution, info->VerticalResolution);
+    val = info->HorizontalResolution * info->VerticalResolution;
+    if (val > max_val)
+    {
+      max_val = val;
+      *w = info->HorizontalResolution;
+      *h = info->VerticalResolution;
+    }
+    efi_free (info);
+  }
+}
+
+static void
+acpi_calc_bgrt_xy (struct bmp_header *bmp, uint32_t *x, uint32_t *y)
+{
+  uint32_t screen_width;
+  uint32_t screen_height;
   uint32_t bmp_width = (uint32_t) bmp->biwidth;
   uint32_t bmp_height = (uint32_t) bmp->biheight;
 
   *x = *y = 0;
-  status = bs->LocateProtocol (&efi_graphics_output_protocol_guid,
-                               NULL, (void **) &gop);
-  if (status != EFI_SUCCESS)
-    DBG ("Graphics Output Protocol not found.\n");
-  else
-  {
-    screen_width = gop->Mode->Info->HorizontalResolution;
-    screen_height = gop->Mode->Info->VerticalResolution;
-  }
+  efi_gop_get_best_mode (&screen_width, &screen_height);
   DBG ("screen = %dx%d, image = %dx%d\n",
        screen_width, screen_height, bmp_width, bmp_height);
   if (screen_width > bmp_width)
