@@ -65,7 +65,6 @@ void process_cmdline (char *cmdline)
   nt_cmdline = &args;
   memset (&args, 0, sizeof (args));
   args.type = BOOT_WIN;
-  printf ("Command line: %s\n", cmdline ? cmdline : "(null)");
   /* Do nothing if we have no command line */
   if ((cmdline == NULL) || (cmdline[0] == '\0'))
     return;
@@ -209,4 +208,5 @@ void process_cmdline (char *cmdline)
       die ("Unrecognised argument \"%s%s%s\"\n", key,
            (value ? "=" : ""), (value ? value : ""));
   }
+  DBG ("Command line: %s\n", cmdline);
 }

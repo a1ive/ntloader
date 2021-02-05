@@ -38,6 +38,7 @@
 #include <bcd.h>
 #include <charset.h>
 #include <acpi.h>
+#include <linux.h>
 #include <efi/Protocol/BlockIo.h>
 #include <efi/Protocol/DevicePath.h>
 #include <efi/Protocol/GraphicsOutput.h>
@@ -262,7 +263,7 @@ EFI_STATUS EFIAPI efi_main (EFI_HANDLE image_handle,EFI_SYSTEM_TABLE *systab)
 }
 
 void efi_linuxentry (EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *systab,
-                     uint32_t *kernel_params)
+                     struct linux_kernel_params *bp)
 {
   /** initrd */
   void *initrd = NULL;
@@ -287,24 +288,25 @@ void efi_linuxentry (EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *systab,
   /* Print welcome banner */
   cls ();
   print_banner ();
-  if (!kernel_params)
+  if (!bp)
     die ("kernel params not found.\n");
 
-  cmdline_len = kernel_params[0x238/4];
+  cmdline_len = bp->cmdline_size;
   cmdline = efi_malloc (cmdline_len + 1);
-  memcpy (cmdline, (char *)(intptr_t)kernel_params[0x228/4], cmdline_len);
+  memcpy (cmdline, (char *)(intptr_t)bp->cmd_line_ptr, cmdline_len);
   cmdline[cmdline_len] = '\0';
 
-  initrd = (void*)(intptr_t)kernel_params[0x218/4];
-  initrd_len = kernel_params[0x21c/4];
+  initrd = (void*)(intptr_t)bp->ramdisk_image;
+  initrd_len = bp->ramdisk_size;
 
   /* Process command line */
   process_cmdline (cmdline);
   efi_free (cmdline);
 
-  DBG ("systab=%p image_handle=%p kernel_params=%p\n",
-       systab, image_handle, kernel_params);
-  DBG ("initrd=%p+0x%x\n", initrd, initrd_len);
+  DBG ("systab=%p image_handle=%p bp=%p\n", systab, image_handle, bp);
+  DBG ("cmdline=0x%x+0x%x, %s\n", bp->cmd_line_ptr, bp->cmdline_size,
+       (char *)(intptr_t) bp->cmd_line_ptr);
+  DBG ("initrd=0x%x+0x%x\n", bp->ramdisk_image, bp->ramdisk_size);
 
   efidisk_init ();
   efidisk_iterate ();
