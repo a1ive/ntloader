@@ -80,7 +80,7 @@ bcd_patch_path (void)
   grub_utf8_to_utf16 (nt_cmdline->path16, len,
                       (uint8_t *)nt_cmdline->path, -1, NULL);
 
-  bcd_replace_hex (search, strlen (search), nt_cmdline->path16, len, 2);
+  bcd_replace_hex (search, strlen (search), nt_cmdline->path16, len, 0);
 }
 
 static void
@@ -92,6 +92,8 @@ bcd_patch_hive (reg_hive_t *hive, const wchar_t *keyname, void *val)
   hive->find_root (hive, &root);
   hive->find_key (hive, root, BCD_REG_ROOT, &objects);
   if (wcscasecmp (keyname, BCDOPT_TIMEOUT) == 0)
+    hive->find_key (hive, objects, GUID_BOOTMGR, &osloader);
+  else if (wcscasecmp (keyname, BCDOPT_DISPLAY) == 0)
     hive->find_key (hive, objects, GUID_BOOTMGR, &osloader);
   else if (wcscasecmp (keyname, BCDOPT_IMGOFS) == 0)
     hive->find_key (hive, objects, GUID_RAMDISK, &osloader);
@@ -116,7 +118,6 @@ bcd_parse_bool (reg_hive_t *hive, const wchar_t *keyname, const char *s)
   bcd_patch_hive (hive, keyname, &val);
 }
 
-#if 0
 static void
 bcd_parse_u64 (reg_hive_t *hive, const wchar_t *keyname, const char *s)
 {
@@ -124,10 +125,10 @@ bcd_parse_u64 (reg_hive_t *hive, const wchar_t *keyname, const char *s)
   val = strtoul (s, NULL, 0);
   bcd_patch_hive (hive, keyname, &val);
 }
-#endif
 
 static void
-bcd_parse_str (reg_hive_t *hive, const wchar_t *keyname, const char *s)
+bcd_parse_str (reg_hive_t *hive, const wchar_t *keyname,
+               uint8_t resume, const char *s)
 {
   HKEY root, objects, osloader, elements, key;
   uint16_t *data = NULL;
@@ -135,7 +136,10 @@ bcd_parse_str (reg_hive_t *hive, const wchar_t *keyname, const char *s)
   DBG ("...patching key %ls value %s\n", keyname, s);
   hive->find_root (hive, &root);
   hive->find_key (hive, root, BCD_REG_ROOT, &objects);
-  hive->find_key (hive, objects, GUID_OSENTRY, &osloader);
+  if (resume)
+    hive->find_key (hive, objects, GUID_REENTRY, &osloader);
+  else
+    hive->find_key (hive, objects, GUID_OSENTRY, &osloader);
   hive->find_key (hive, osloader, BCD_REG_HKEY, &elements);
   hive->find_key (hive, elements, keyname, &key);
   hive->query_value_no_copy (hive, key, BCD_REG_HVAL,
@@ -159,16 +163,60 @@ bcd_patch_data (void)
     bcd_patch_path ();
 
   bcd_replace_hex (BCD_DP_MAGIC, strlen (BCD_DP_MAGIC),
-                   &nt_cmdline->info, sizeof (struct bcd_disk_info), 2);
+                   &nt_cmdline->info, sizeof (struct bcd_disk_info), 0);
 
+  /* display menu
+   * default:   no */
+  bcd_parse_bool (hive, BCDOPT_DISPLAY, "yes");
+  /* timeout
+   * default:   1 */
+  bcd_parse_u64 (hive, BCDOPT_TIMEOUT, "0");
+  /* testsigning
+   * default:   no */
   if (nt_cmdline->test_mode[0])
     bcd_parse_bool (hive, BCDOPT_TESTMODE, nt_cmdline->test_mode);
   else
     bcd_parse_bool (hive, BCDOPT_TESTMODE, "no");
+  /* force highest resolution
+   * default:   no */
   if (nt_cmdline->hires[0])
     bcd_parse_bool (hive, BCDOPT_HIGHEST, nt_cmdline->hires);
   else
     bcd_parse_bool (hive, BCDOPT_HIGHEST, "no");
+  /* detect hal and kernel
+   * default:   yes */
+  if (nt_cmdline->detecthal[0])
+    bcd_parse_bool (hive, BCDOPT_DETHAL, nt_cmdline->detecthal);
+  else
+    bcd_parse_bool (hive, BCDOPT_DETHAL, "yes");
+  /* winpe mode
+   * default:
+   *      OS  - no
+   *      VHD - no
+   *      WIM - yes */
+  if (nt_cmdline->minint[0])
+    bcd_parse_bool (hive, BCDOPT_WINPE, nt_cmdline->minint);
+  else
+  {
+    if (nt_cmdline->type == BOOT_WIM)
+      bcd_parse_bool (hive, BCDOPT_WINPE, "yes");
+    else
+      bcd_parse_bool (hive, BCDOPT_WINPE, "no");
+  }
+  /* disable vesa
+   * default:   no */
+  if (nt_cmdline->novesa[0])
+    bcd_parse_bool (hive, BCDOPT_NOVESA, nt_cmdline->novesa);
+  else
+    bcd_parse_bool (hive, BCDOPT_NOVESA, "no");
+  /* disable vga
+   * default:   no */
+  if (nt_cmdline->novga[0])
+    bcd_parse_bool (hive, BCDOPT_NOVGA, nt_cmdline->novga);
+  else
+    bcd_parse_bool (hive, BCDOPT_NOVGA, "no");
+  /* nx policy
+   * default:   OptIn */
   if (nt_cmdline->nx[0])
   {
     uint64_t nx = 0;
@@ -182,6 +230,8 @@ bcd_patch_data (void)
       nx = NX_ALWAYSON;
     bcd_patch_hive (hive, BCDOPT_NX, &nx);
   }
+  /* pae
+   * default:   Default */
   if (nt_cmdline->pae[0])
   {
     uint64_t pae = 0;
@@ -193,27 +243,41 @@ bcd_patch_data (void)
       pae = PAE_DISABLE;
     bcd_patch_hive (hive, BCDOPT_PAE, &pae);
   }
+  /* load options
+   * default:   DDISABLE_INTEGRITY_CHECKS */
   if (nt_cmdline->loadopt[0])
-    bcd_parse_str (hive, BCDOPT_CMDLINE, nt_cmdline->loadopt);
+    bcd_parse_str (hive, BCDOPT_CMDLINE, 0, nt_cmdline->loadopt);
   else
-    bcd_parse_str (hive, BCDOPT_CMDLINE, BCD_DEFAULT_CMDLINE);
+    bcd_parse_str (hive, BCDOPT_CMDLINE, 0, BCD_DEFAULT_CMDLINE);
+  /* winload.efi
+   * default:
+   *      OS  - \\Windows\\System32\\winload.efi
+   *      VHD - \\Windows\\System32\\winload.efi
+   *      WIM - \\Windows\\System32\\boot\\winload.efi */
   if (nt_cmdline->winload[0])
-    bcd_parse_str (hive, BCDOPT_WINLOAD, nt_cmdline->winload);
+    bcd_parse_str (hive, BCDOPT_WINLOAD, 0, nt_cmdline->winload);
   else
   {
     if (nt_cmdline->type == BOOT_WIM)
-      bcd_parse_str (hive, BCDOPT_WINLOAD, BCD_LONG_WINLOAD);
+      bcd_parse_str (hive, BCDOPT_WINLOAD, 0, BCD_LONG_WINLOAD);
     else
-      bcd_parse_str (hive, BCDOPT_WINLOAD, BCD_SHORT_WINLOAD);
+      bcd_parse_str (hive, BCDOPT_WINLOAD, 0, BCD_SHORT_WINLOAD);
   }
+  /* windows system root
+   * default:   \\Windows */
   if (nt_cmdline->sysroot[0])
-    bcd_parse_str (hive, BCDOPT_SYSROOT, nt_cmdline->sysroot);
+    bcd_parse_str (hive, BCDOPT_SYSROOT, 0, nt_cmdline->sysroot);
   else
-    bcd_parse_str (hive, BCDOPT_SYSROOT, BCD_DEFAULT_SYSROOT);
+    bcd_parse_str (hive, BCDOPT_SYSROOT, 0, BCD_DEFAULT_SYSROOT);
+  /* windows resume */
+  if (nt_cmdline->type == BOOT_WIN)
+  {
+    bcd_parse_str (hive, BCDOPT_REPATH, 1, BCD_DEFAULT_WINRESUME);
+    bcd_parse_str (hive, BCDOPT_REHIBR, 1, BCD_DEFAULT_HIBERFIL);
+  }
 
   if (efi_systab)
     bcd_replace_hex (a, 8, b, 8, 0);
   else
     bcd_replace_hex (b, 8, a, 8, 0);
-
 }

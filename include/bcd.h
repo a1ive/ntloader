@@ -25,6 +25,8 @@
 #define BCD_DP_MAGIC "GNU GRUB2 NTBOOT"
 
 #define GUID_OSENTRY L"{19260817-6666-8888-abcd-000000000000}"
+#define GUID_REENTRY L"{19260817-6666-8888-abcd-000000000001}"
+
 #define GUID_BOOTMGR L"{9dea862c-5cdd-4e70-acc1-f32b344d4795}"
 #define GUID_RAMDISK L"{ae5534e0-a924-466c-b836-758539a3ee3a}"
 #define GUID_MEMDIAG L"{b2721d73-1db4-4c62-bf78-c548a880142d}"
@@ -33,6 +35,9 @@
 #define BCD_REG_ROOT L"Objects"
 #define BCD_REG_HKEY L"Elements"
 #define BCD_REG_HVAL L"Element"
+
+#define BCDOPT_REPATH   L"12000002"
+#define BCDOPT_REHIBR   L"22000002"
 
 #define BCDOPT_WINLOAD  L"12000002"
 #define BCDOPT_CMDLINE  L"12000030"
@@ -43,6 +48,7 @@
 #define BCDOPT_NX       L"25000020"
 #define BCDOPT_PAE      L"25000021"
 #define BCDOPT_DETHAL   L"26000010"
+#define BCDOPT_DISPLAY  L"26000020" // {bootmgr}
 #define BCDOPT_WINPE    L"26000022"
 #define BCDOPT_NOVESA   L"26000042"
 #define BCDOPT_NOVGA    L"26000043"
@@ -64,7 +70,11 @@
 
 #define BCD_SHORT_WINLOAD "\\Windows\\System32\\winload.efi"
 
+#define BCD_DEFAULT_WINRESUME "\\Windows\\System32\\winresume.efi"
+
 #define BCD_DEFAULT_SYSROOT "\\Windows"
+
+#define BCD_DEFAULT_HIBERFIL "\\hiberfil.sys"
 
 struct bcd_disk_info
 {

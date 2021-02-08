@@ -145,6 +145,34 @@ void process_cmdline (char *cmdline)
       else
         snprintf (args.hires, 6, "%s", value);
     }
+    else if (strcmp (key, "detecthal") == 0)
+    {
+      if (! value || ! value[0])
+        snprintf (args.detecthal, 6, "true");
+      else
+        snprintf (args.detecthal, 6, "%s", value);
+    }
+    else if (strcmp (key, "minint") == 0)
+    {
+      if (! value || ! value[0])
+        snprintf (args.minint, 6, "true");
+      else
+        snprintf (args.minint, 6, "%s", value);
+    }
+    else if (strcmp (key, "novesa") == 0)
+    {
+      if (! value || ! value[0])
+        snprintf (args.novesa, 6, "true");
+      else
+        snprintf (args.novesa, 6, "%s", value);
+    }
+    else if (strcmp (key, "novga") == 0)
+    {
+      if (! value || ! value[0])
+        snprintf (args.novga, 6, "true");
+      else
+        snprintf (args.novga, 6, "%s", value);
+    }
     else if (strcmp (key, "nx") == 0)
     {
       if (! value || ! value[0])

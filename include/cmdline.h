@@ -43,6 +43,10 @@ struct nt_args
 
   char test_mode[6];
   char hires[6];
+  char detecthal[6];
+  char minint[6];
+  char novesa[6];
+  char novga[6];
   char nx[10];
   char pae[8];
   char loadopt[128];
