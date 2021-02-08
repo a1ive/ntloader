@@ -265,28 +265,28 @@ void efi_install (void)
 {
   EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
   EFI_STATUS efirc;
-  /* Install virtual partition */
-  printf ("Installing block I/O protocol for virtual partition...\n");
-  if ((efirc = bs->InstallMultipleProtocolInterfaces (&efi_vpartition.handle,
-                       &efi_block_io_protocol_guid, &efi_vpartition.block,
-                       &efi_device_path_protocol_guid, efi_vpartition.path,
-                       NULL)) != 0)
-  {
-    die ("Could not install partition block I/O protocols: %#lx\n",
-         ((unsigned long) efirc));
-  }
-  bs->ConnectController (efi_vpartition.handle, NULL, NULL, TRUE);
   /* Install virtual disk */
-  printf ("Installing block I/O protocol for virtual disk...\n");
-  if ((efirc = bs->InstallMultipleProtocolInterfaces (&efi_vdisk.handle,
+  DBG ("Installing block I/O protocol for virtual disk...\n");
+  efirc = bs->InstallMultipleProtocolInterfaces (&efi_vdisk.handle,
                        &efi_block_io_protocol_guid, &efi_vdisk.block,
                        &efi_device_path_protocol_guid, efi_vdisk.path,
-                       NULL)) != 0)
+                       NULL);
+  if (efirc != 0)
   {
     die ("Could not install disk block I/O protocols: %#lx\n",
          ((unsigned long) efirc));
   }
-  bs->ConnectController (efi_vdisk.handle, NULL, NULL, TRUE);
+  /* Install virtual partition */
+  DBG ("Installing block I/O protocol for virtual partition...\n");
+  efirc = bs->InstallMultipleProtocolInterfaces (&efi_vpartition.handle,
+                       &efi_block_io_protocol_guid, &efi_vpartition.block,
+                       &efi_device_path_protocol_guid, efi_vpartition.path,
+                       NULL);
+  if (efirc != 0)
+  {
+    die ("Could not install partition block I/O protocols: %#lx\n",
+         ((unsigned long) efirc));
+  }
 }
 
 /** Boot image path */
