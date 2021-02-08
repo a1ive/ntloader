@@ -104,6 +104,22 @@ kernel /ntloader uuid=%?% file=/xxx.vhd testmode=1
 ```
 kernel /ntloader uuid=%?% file=/xxx.wim hires=1
 ```
+- Disable hardware abstraction layer (HAL) and kernel detection.
+```
+kernel /ntloader uuid=%?% detecthal=0
+```
+- Load the Registry SYSTEM hive as a volatile hive (WinPE mode)
+```
+kernel /ntloader uuid=%?% minint=1
+```
+- Disable the use of VGA modes
+```
+kernel /ntloader uuid=%?% novga=1
+```
+- Disable VESA BIOS calls
+```
+kernel /ntloader uuid=%?% novesa=1
+```
 - Configure *Physical Address Extension* (PAE)
 ```
 kernel /ntloader uuid=%?% pae=Enable|Disable|Default
