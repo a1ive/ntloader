@@ -140,6 +140,10 @@ kernel /ntloader uuid=%?% winload=/Windows/System32/winload.efi
 ```
 kernel /ntloader uuid=%?% file=/xxx.vhd sysroot=/Windows
 ```
+- Boot Windows 7 and load Vgashim/UefiSeven (UEFI)
+```
+kernel /ntloader uuid=%?% win7 vgashim
+```
 - Hook UEFI `SecureBoot` variable (UEFI)
 ```
 kernel /ntloader uuid=%?% file=/xxx.vhd secureboot=off
