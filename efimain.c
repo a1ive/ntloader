@@ -82,6 +82,35 @@ static struct vdisk_file *bootmgfw = NULL;
   #error Unknown Processor Type
 #endif
 
+static void efi_load_vgashim (void *file, size_t len)
+{
+  EFI_PHYSICAL_ADDRESS phys;
+  void *data;
+  unsigned int pages;
+  EFI_HANDLE handle;
+  EFI_STATUS efirc;
+  EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
+
+  if (!file || !len)
+    return;
+  pages = ((len + PAGE_SIZE - 1) / PAGE_SIZE);
+  if ((efirc = bs->AllocatePages (AllocateAnyPages,
+                                  EfiBootServicesData, pages, &phys)) != 0)
+   return;
+  data = ((void *) (intptr_t) phys);
+  memcpy (data, file, len);
+  DBG ("Loading vgashim\n");
+  efirc = bs->LoadImage (FALSE, efi_image_handle, NULL, data, len, &handle);
+  if (nt_cmdline->pause)
+    pause_boot ();
+  if (efirc == EFI_SUCCESS)
+    bs->StartImage (handle, NULL, NULL);
+  else
+    DBG ("Could not load vgashim\n");
+  if (nt_cmdline->pause)
+    pause_boot ();
+}
+
 /**
  * File handler
  *
@@ -109,8 +138,24 @@ static int efi_add_file (const char *name, void *data, size_t len)
     DBG ("...skip BCD\n");
   else if (strcasecmp (name, BOOT_FILE_NAME) == 0)
   {
+    if (nt_cmdline->win7)
+      return 0;
     DBG ("...found bootmgfw.efi file %s\n", name);
-    bootmgfw = vdisk_add_file (name, data, len, read_mem_file);;
+    bootmgfw = vdisk_add_file (name, data, len, read_mem_file);
+  }
+  else if (strcasecmp (name, "win7.efi") == 0)
+  {
+    if (!nt_cmdline->win7)
+      return 0;
+    DBG ("..found win7 efi loader\n");
+    bootmgfw = vdisk_add_file ("bootx64.efi", data, len, read_mem_file);
+  }
+  else if (strcasecmp (name, "vgashim.efi") == 0)
+  {
+    if (!nt_cmdline->win7 || !nt_cmdline->vgashim)
+      return 0;
+    DBG ("..found vgashim\n");
+    efi_load_vgashim (data, len);
   }
   else if (strcasecmp (name, "bgrt.bmp") == 0 && nt_cmdline->bgrt)
   {

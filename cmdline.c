@@ -99,6 +99,12 @@ void process_cmdline (char *cmdline)
       args.quiet = 1;
     else if (strcmp (key, "linear") == 0)
       args.linear = 1;
+#if __x86_64__
+    else if (strcmp (key, "win7") == 0)
+      args.win7 = 1;
+    else if (strcmp (key, "vgashim") == 0)
+      args.vgashim = 1;
+#endif
     else if (strcmp (key, "pause") == 0)
     {
       args.pause = 1;
