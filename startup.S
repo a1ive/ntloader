@@ -101,7 +101,7 @@ reboot:
 
 	/* Global descriptor table */
 	.section ".rodata16", "aw", @progbits
-	.align	8
+	.balign	8
 gdt:
 	.globl	gdtr
 gdtr:
@@ -132,7 +132,7 @@ gdtr:
 
 	/* Interrupt descriptor table */
 	.section ".bss16", "aw", @nobits
-	.align	8
+	.balign	8
 idt:
 	.space	( 256 * 8 )	/* 256 8-byte entries */
 	.size	idt, . - idt
@@ -148,7 +148,7 @@ idtr:
 
 	/* Stack */
 	.section ".stack", "aw", @nobits
-	.align	8
+	.balign	8
 _stack:
 	.space	( 64 * 1024 )
 	.size	_stack, . - _stack
