@@ -56,6 +56,9 @@
 /** 2MB page size */
 #define PAGE_SIZE_2MB 0x200000
 
+/** 2GB memory threshold */
+#define ADDR_2GB 0x80000000
+
 /** 32-bit address space size */
 #define ADDR_4GB 0x100000000ULL
 
@@ -75,6 +78,7 @@ extern int paging;
 extern void init_paging (void);
 extern void enable_paging (struct paging_state *state);
 extern void disable_paging (struct paging_state *state);
-extern uint64_t relocate_memory (void *start, size_t len);
+extern void *relocate_memory_low (void *data, size_t len);
+extern uint64_t relocate_memory_high (void *start, size_t len);
 
 #endif /* _PAGING_H */

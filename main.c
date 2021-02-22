@@ -257,6 +257,11 @@ int main (void)
   /* Enable paging */
   enable_paging (&state);
 
+  /* Relocate initrd below 2GB if possible, to avoid collisions */
+  DBG ("Found initrd at [%p,%p)\n", initrd, (initrd + initrd_len));
+  initrd = relocate_memory_low (initrd, initrd_len);
+  DBG ("Placing initrd at [%p,%p)\n", initrd, (initrd + initrd_len));
+
   biosdisk_init ();
   biosdisk_iterate ();
   if (nt_cmdline->pause)
@@ -296,10 +301,11 @@ int main (void)
   if (load_pe (bootmgr->opaque, bootmgr->len, &pe) != 0)
     die ("FATAL: Could not load bootmgr.exe\n");
 
-  /* Relocate initrd */
-  initrd_phys = relocate_memory (initrd, initrd_len);
-  DBG ("Placing initrd at [%p,%p) phys [%#llx,%#llx)\n",
-       initrd, (initrd + initrd_len), initrd_phys, (initrd_phys + initrd_len));
+  /* Relocate initrd above 4GB if possible, to free up 32-bit memory */
+  initrd_phys = relocate_memory_high (initrd, initrd_len);
+  DBG ("Placing initrd at physical [%#llx,%#llx)\n",
+       initrd_phys, (initrd_phys + initrd_len));
+
   /* Complete boot application descriptor set */
   bootapps.bootapp.pe_base = pe.base;
   bootapps.bootapp.pe_len = pe.len;

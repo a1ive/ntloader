@@ -195,13 +195,48 @@ void disable_paging (struct paging_state *state)
 }
 
 /**
+ * Relocate data below 2GB if possible
+ *
+ * @v data    Start of data
+ * @v len     Length of data
+ * @ret start Start address
+ */
+void *relocate_memory_low (void *data, size_t len)
+{
+  struct e820_entry *e820 = NULL;
+  uint64_t end;
+  intptr_t start;
+
+  /* Read system memory map */
+  while ((e820 = memmap_next (e820)) != NULL)
+  {
+    /* Find highest compatible placement within this region */
+    end = (e820->start + e820->len);
+    start = ((end > ADDR_2GB) ? ADDR_2GB : end);
+    if (start < len)
+      continue;
+    start -= len;
+    start &= ~(PAGE_SIZE - 1);
+    if (start < e820->start)
+      continue;
+
+    /* Relocate to this region */
+    memmove ((void *) start, data, len);
+    return ((void *) start);
+  }
+
+  /* Leave at original location */
+  return data;
+}
+
+/**
  * Relocate data out of 32-bit address space, if possible
  *
  * @v data      Start of data
  * @v len       Length of data
  * @ret start   Physical start address
  */
-uint64_t relocate_memory (void *data, size_t len)
+uint64_t relocate_memory_high (void *data, size_t len)
 {
   intptr_t end = (((intptr_t) data) + len);
   struct e820_entry *e820 = NULL;
