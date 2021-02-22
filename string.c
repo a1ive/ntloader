@@ -30,76 +30,74 @@
 #include <ctype.h>
 #include <wctype.h>
 
-/**
- * Copy memory area
- *
- * @v dest    Destination address
- * @v src   Source address
- * @v len   Length
- * @ret dest    Destination address
- */
 void *memcpy (void *dest, const void *src, size_t len)
 {
-  char *d = (char *) dest;
-  const char *s = (const char *) src;
+  void *edi = dest;
+  const void *esi = src;
+  int discard_ecx;
 
-  if (d < s)
-    while (len--)
-      *d++ = *s++;
-  else
-  {
-    d += len;
-    s += len;
-
-    while (len--)
-      *--d = *--s;
-  }
-
+  /* Perform dword-based copy for bulk, then byte-based for remainder */
+  __asm__ __volatile__ ("rep movsl"
+                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
+                        : "0" (edi), "1" (esi), "2" (len >> 2)
+                        : "memory");
+  __asm__ __volatile__ ("rep movsb"
+                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
+                        : "0" (edi), "1" (esi), "2" (len & 3)
+                        : "memory");
   return dest;
 }
 
-/**
- * Set memory area
- *
- * @v dest    Destination address
- * @v src   Source address
- * @v len   Length
- * @ret dest    Destination address
- */
+static void *memcpy_reverse (void *dest, const void *src, size_t len)
+{
+  void *edi = (dest + len - 1);
+  const void *esi = (src + len - 1);
+  int discard_ecx;
+
+  /* Assume memmove() is not performance-critical, and perform a
+   * bytewise copy for simplicity.
+   *
+   * Disable interrupts to avoid known problems on platforms
+   * that assume the direction flag always remains cleared.
+   */
+  __asm__ __volatile__ ("pushf\n\t"
+                        "cli\n\t"
+                        "std\n\t"
+                        "rep movsb\n\t"
+                        "popf\n\t"
+                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
+                        : "0" (edi), "1" (esi), "2" (len)
+                        : "memory");
+  return dest;
+}
+
+void *memmove (void *dest, const void *src, size_t len)
+{
+  if (dest <= src)
+    return memcpy (dest, src, len);
+  else
+    return memcpy_reverse (dest, src, len);
+}
+
 void *memset (void *dest, int c, size_t len)
 {
-  void *p = dest;
-  uint8_t pattern8 = c;
+  void *edi = dest;
+  int eax = c;
+  int discard_ecx;
 
-  if (len >= 3 * sizeof (unsigned long))
-  {
-    unsigned long patternl = 0;
-    size_t i;
+  /* Expand byte to whole dword */
+  eax |= (eax << 8);
+  eax |= (eax << 16);
 
-    for (i = 0; i < sizeof (unsigned long); i++)
-      patternl |= ((unsigned long) pattern8) << (8 * i);
-
-    while (len > 0 && (((size_t) p) & (sizeof (unsigned long) - 1)))
-    {
-      *(uint8_t *) p = pattern8;
-      p = (uint8_t *) p + 1;
-      len--;
-    }
-    while (len >= sizeof (unsigned long))
-    {
-      *(unsigned long *) p = patternl;
-      p = (unsigned long *) p + 1;
-      len -= sizeof (unsigned long);
-    }
-  }
-
-  while (len > 0)
-  {
-    *(uint8_t *) p = pattern8;
-    p = (uint8_t *) p + 1;
-    len--;
-  }
-
+  /* Perform dword-based set for bulk, then byte-based for remainder */
+  __asm__ __volatile__ ("rep stosl"
+                        : "=&D" (edi), "=&a" (eax), "=&c" (discard_ecx)
+                        : "0" (edi), "1" (eax), "2" (len >> 2)
+                        : "memory");
+  __asm__ __volatile__ ("rep stosb"
+                        : "=&D" (edi), "=&a" (eax), "=&c" (discard_ecx)
+                        : "0" (edi), "1" (eax), "2" (len & 3)
+                        : "memory");
   return dest;
 }
 
