@@ -59,7 +59,7 @@ menuentry "Boot Windows NT6+ PE" {
 
 - GRUB4DOS
 ```
-title Boot Windows NT6+ PE
+title Boot Windows NT6+
 uuid (hdx,y)
 kernel /ntloader uuid=%?_UUID%
 initrd /initrd.lz1
@@ -67,7 +67,7 @@ initrd /initrd.lz1
 
 - a1ive GRUB2
 ```
-menuentry "Boot Windows NT6+ PE" {
+menuentry "Boot Windows NT6+" {
     probe -s dev_uuid -u (hdx,y);
     if [ "${grub_platform}" = "efi" ];
     then
@@ -82,7 +82,7 @@ menuentry "Boot Windows NT6+ PE" {
 - GNU GRUB2
   
 ```
-menuentry "Boot Windows NT6+ PE" {
+menuentry "Boot Windows NT6+" {
     probe -s dev_uuid -u (hdx,y);
     if [ "${grub_platform}" = "efi" ];
     then
