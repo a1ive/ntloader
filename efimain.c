@@ -318,12 +318,6 @@ void efi_linuxentry (EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *systab,
   uint32_t cmdline_len = 0;
   char *cmdline = 0;
 
-#if __x86_64__
-  extern char _bss[];
-  extern char _ebss[];
-  memset (_bss, 0, _ebss - _bss);
-#endif
-
   efi_image_handle = image_handle;
   efi_systab = systab;
 

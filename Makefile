@@ -1,4 +1,4 @@
-VERSION := v1.0.6
+VERSION := v1.0.7
 OBJECTS := prefix.o startup.o callback.o vsprintf.o string.o
 OBJECTS += int13.o vdisk.o cpio.o stdio.o misc.o efimain.o
 OBJECTS += efiblock.o cmdline.o peloader.o main.o efidisk.o

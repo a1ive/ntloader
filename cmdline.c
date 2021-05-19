@@ -68,6 +68,7 @@ void process_cmdline (char *cmdline)
   /* Do nothing if we have no command line */
   if ((cmdline == NULL) || (cmdline[0] == '\0'))
     return;
+  printf ("Command line: %s\n", cmdline);
   /* Parse command line */
   while (*tmp)
   {
@@ -242,5 +243,4 @@ void process_cmdline (char *cmdline)
       die ("Unrecognised argument \"%s%s%s\"\n", key,
            (value ? "=" : ""), (value ? value : ""));
   }
-  DBG ("Command line: %s\n", cmdline);
 }

@@ -34,6 +34,9 @@
 #include <memmap.h>
 #include <paging.h>
 
+/** 1MB memory threshold */
+#define ADDR_1MB 0x00100000
+
 /** Virtual address used as a 2MB window during relocation */
 #define COPY_WINDOW 0x200000
 
@@ -195,7 +198,7 @@ void disable_paging (struct paging_state *state)
 }
 
 /**
- * Relocate data below 2GB if possible
+ * Relocate data between 1MB and 2GB if possible
  *
  * @v data    Start of data
  * @v len     Length of data
@@ -218,6 +221,8 @@ void *relocate_memory_low (void *data, size_t len)
     start -= len;
     start &= ~(PAGE_SIZE - 1);
     if (start < e820->start)
+      continue;
+    if (start < ADDR_1MB)
       continue;
 
     /* Relocate to this region */
