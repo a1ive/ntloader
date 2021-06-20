@@ -438,7 +438,7 @@ void efi_boot (struct vdisk_file *file)
   /* Allocate memory */
   pages = ((file->len + PAGE_SIZE - 1) / PAGE_SIZE);
   if ((efirc = bs->AllocatePages (AllocateAnyPages,
-                                  EfiBootServicesData, pages, &phys)) != 0)
+                                  EfiLoaderCode, pages, &phys)) != 0)
     die ("Could not allocate %d pages: %#lx\n", pages, ((unsigned long) efirc));
   data = ((void *) (intptr_t) phys);
   /* Read image */

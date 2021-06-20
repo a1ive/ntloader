@@ -56,7 +56,6 @@ struct nt_args
   char sb[6];
   int bgrt;
   int win7;
-  int vgashim;
 
   enum bcd_type type;
   struct bcd_disk_info info;

@@ -1,4 +1,5 @@
 /ntloader
+/ntloader.i386
 /ntloader.zip
 /*.s
 /*.o

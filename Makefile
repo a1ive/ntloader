@@ -1,6 +1,6 @@
-VERSION := v1.0.7
+VERSION := v1.0.8
 OBJECTS := prefix.o startup.o callback.o vsprintf.o string.o
-OBJECTS += int13.o vdisk.o cpio.o stdio.o misc.o efimain.o
+OBJECTS += int13.o vdisk.o cpio.o stdio.o misc.o
 OBJECTS += efiblock.o cmdline.o peloader.o main.o efidisk.o
 OBJECTS += msdos.o gpt.o fsuuid.o lznt1.o bcd.o biosdisk.o reg.o
 OBJECTS += acpi.o paging.o memmap.o
@@ -8,8 +8,6 @@ OBJECTS += acpi.o paging.o memmap.o
 OBJECTS_i386 := $(patsubst %.o,%.i386.o,$(OBJECTS))
 OBJECTS_x86_64 := $(patsubst %.o,%.x86_64.o,$(OBJECTS))
 OBJECTS_i386_x86_64 := $(patsubst %.o,%.i386.x86_64.o,$(OBJECTS))
-
-HEADERS := $(wildcard include/*.h)
 
 HOST_CC		:= $(CC)
 AS		:= $(AS)
@@ -83,16 +81,19 @@ CFLAGS += -include include/compiler.h
 #
 # Final targets
 
-all : ntloader
+all : ntloader ntloader.i386
 
-ntloader : ntloader.x86_64.efi Makefile
+ntloader : ntloader.x86_64.efi
 	$(CP) $< $@
 
-ntloader.%.elf : prefix.%.o lib.%.a script.lds Makefile
+ntloader.i386 : ntloader.i386.efi
+	$(CP) $< $@
+
+ntloader.%.elf : prefix.%.o lib.%.a
 	$(LD) -m elf_$* -T script.lds -o $@ -q -Map ntloader.$*.map \
 		prefix.$*.o lib.$*.a
 
-ntloader.%.efi : ntloader.%.elf efireloc Makefile
+ntloader.%.efi : ntloader.%.elf efireloc
 	$(OBJCOPY) -Obinary $< $@
 	./efireloc $< $@
 
@@ -100,16 +101,16 @@ ntloader.%.efi : ntloader.%.elf efireloc Makefile
 #
 # i386 objects
 
-%.i386.s : %.S $(HEADERS) Makefile
+%.i386.s : %.S
 	$(CC) $(CFLAGS) $(CFLAGS_i386) -DASSEMBLY -Ui386 -E $< -o $@
 
-%.i386.s : %.c $(HEADERS) Makefile
+%.i386.s : %.c
 	$(CC) $(CFLAGS) $(CFLAGS_i386) -S $< -o $@
 
-%.i386.o : %.i386.s i386.i Makefile
+%.i386.o : %.i386.s
 	$(AS) --32 i386.i $< -o $@
 
-lib.i386.a : $(OBJECTS_i386) Makefile
+lib.i386.a : $(OBJECTS_i386)
 	$(RM) -f $@
 	$(AR) r $@ $(OBJECTS_i386)
 	$(RANLIB) $@
@@ -118,26 +119,26 @@ lib.i386.a : $(OBJECTS_i386) Makefile
 #
 # i386 objects to be linked into an x86_64 binary
 
-%.i386.x86_64.raw.o : %.i386.s i386.i Makefile
+%.i386.x86_64.raw.o : %.i386.s
 	$(AS) --64 i386.i $< -o $@
 
-%.i386.x86_64.o : %.i386.x86_64.raw.o Makefile
+%.i386.x86_64.o : %.i386.x86_64.raw.o
 	$(OBJCOPY) --prefix-symbols=__i386_ $< $@
 
 ###############################################################################
 #
 # x86_64 objects
 
-%.x86_64.s : %.S $(HEADERS) Makefile
+%.x86_64.s : %.S
 	$(CC) $(CFLAGS) $(CFLAGS_x86_64) -DASSEMBLY -Ui386 -E $< -o $@
 
-%.x86_64.s : %.c $(HEADERS) Makefile
+%.x86_64.s : %.c
 	$(CC) $(CFLAGS) $(CFLAGS_x86_64) -S $< -o $@
 
-%.x86_64.o : %.x86_64.s x86_64.i Makefile
+%.x86_64.o : %.x86_64.s
 	$(AS) --64 x86_64.i $< -o $@
 
-lib.x86_64.a : $(OBJECTS_x86_64) $(OBJECTS_i386_x86_64) Makefile
+lib.x86_64.a : $(OBJECTS_x86_64) $(OBJECTS_i386_x86_64)
 	$(RM) -f $@
 	$(AR) r $@ $(OBJECTS_x86_64) $(OBJECTS_i386_x86_64)
 	$(RANLIB) $@
@@ -151,7 +152,7 @@ EFIRELOC_CFLAGS := -I$(BINUTILS_DIR)/include -I$(BFD_DIR)/include \
 EFIRELOC_LDFLAGS := -L$(BINUTILS_DIR)/lib -L$(BFD_DIR)/lib -L$(ZLIB_DIR)/lib \
 		    -lbfd -ldl -liberty -lz -Wl,--no-warn-search-mismatch
 
-efireloc : utils/efireloc.c Makefile
+efireloc : utils/efireloc.c
 	$(CC) $(HOST_CFLAGS) $(EFIRELOC_CFLAGS) $< $(EFIRELOC_LDFLAGS) -o $@
 
 ###############################################################################
@@ -161,5 +162,5 @@ efireloc : utils/efireloc.c Makefile
 clean :
 	$(RM) -f *.s *.o *.a *.elf *.map
 	$(RM) -f efireloc
-	$(RM) -f ntloader
+	$(RM) -f ntloader ntloader.i386
 	$(RM) -f ntloader.i386.efi ntloader.x86_64.efi

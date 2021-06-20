@@ -1,4 +1,22 @@
 /*
+ *  ntloader  --  Microsoft Windows NT6+ loader
+ *  Copyright (C) 2021  A1ive.
+ *
+ *  ntloader is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  ntloader is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with ntloader.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
  * Copyright (C) 2012 Michael Brown <mbrown@fensystems.co.uk>.
  *
  * This program is free software; you can redistribute it and/or
@@ -17,13 +35,6 @@
  * 02110-1301, USA.
  */
 
-/**
- * @file
- *
- * Startup code
- *
- */
-
 #include <ntboot.h>
 
 #define WARM_REBOOT_FLAG 0x0472
@@ -38,118 +49,145 @@
 #define i386(symbol) symbol
 #endif
 
-	.arch	i386
-	.code32
+    .code32
 
-	/* Startup code */
-	.section ".text", "ax", @progbits
-	.globl	startup
+    /* Startup code */
+    .section  ".text", "ax", @progbits
+    .globl    startup
 startup:
-	/* Reload GDT, IDT, and all segment registers, and set up stack */
-	lgdt	gdtr
-	lidt	idtr
-	ljmp	$FLAT_CS, $1f
-1:	movw	$FLAT_DS, %ax
-	movw	%ax, %ds
-	movw	%ax, %es
-	movw	%ax, %fs
-	movw	%ax, %gs
-	movw	%ax, %ss
-	movl	$_estack, %esp
+    /* Reload GDT, IDT, and all segment registers, and set up stack */
+    lgdt      gdtr
+    lidt      idtr
+    ljmp      $FLAT_CS, $1f
+1:  movw      $FLAT_DS, %ax
+    movw      %ax, %ds
+    movw      %ax, %es
+    movw      %ax, %fs
+    movw      %ax, %gs
+    movw      %ax, %ss
+    movl      $_estack, %esp
 
-	/* Jump to C code */
-	call	main
+    /* Jump to C code */
+    call      main
 
-	/* Should never return */
-	jmp	reboot
-	.size	startup, . - startup
+    /* Should never return */
+    jmp       reboot
+    .size     startup, . - startup
 
-	.section ".text", "ax", @progbits
-	.globl	efihandover
-	.globl	efihandover64
+    .section  ".text", "ax", @progbits
+    .globl    efihandover
+    .globl    efihandover64
 efihandover:
-	add	$0x4, %esp
-	/* save boot_params pointer */
-	movl	8(%esp), %esi
-	call	i386(efi_linuxentry)
-	.size	startup, . - startup
-	.org	.+512, 0x90
+#if __x86_64__
+    /* Zero real-mode and protected-mode .bss sections */
+    xorl      %eax, %eax
+    movl      $_bss16, %edi
+    movl      $_bss16_len, %ecx
+    rep       stosb
+    movl      $_bss, %edi
+    movl      $_bss_len, %ecx
+    rep       stosb
+
+    movl      4(%esp), %eax
+    movl      %eax, i386(efi_image_handle)
+    movl      8(%esp), %eax
+    movl      %eax, i386(efi_systab)
+    movl      12(%esp), %eax
+    movl      %eax, i386(bp)
+    call      i386(main)
+    ret
+#endif
+    .size     efihandover, . - efihandover
+    .org      . + 512, 0x90
+    .code64
 efihandover64:
-	/* realign the stack */
-	/* and	$~0xf, %rsp */
-	.byte	0x48, 0x83, 0xe4, 0xf0
-	/* save boot_params pointer */
-	/* movq	%rdx, %rbx */
-	.byte 0x48, 0x89, 0xd3
-	call	efi_linuxentry
-	.size	startup, . - startup
+#if __x86_64__
+    movq      %rdi, %r8
+    /* Zero real-mode and protected-mode .bss sections */
+    xorq      %rax, %rax
+    movq      $_bss16, %rdi
+    movq      $_bss16_len, %rcx
+    rep       stosb
+    movq      $_bss, %rdi
+    movq      $_bss_len, %rcx
+    rep       stosb
 
-	/* Reboot system */
-	.section ".text", "ax", @progbits
-	.globl	reboot
+    movq      %r8, efi_image_handle
+    movq      %rsi, efi_systab
+    movq      %rdx, bp
+
+    andq      $~0xf, %rsp
+    call      main
+#endif
+    .size     efihandover64, . - efihandover64
+
+    .code32
+    /* Reboot system */
+    .section  ".text", "ax", @progbits
+    .globl    reboot
 reboot:
-	/* Attempt a warm reboot via the keyboard controller */
-	movw	$WARM_REBOOT_MAGIC, WARM_REBOOT_FLAG
-	movb	$KC_CMD_RESET, %al
-	outb	%al, $KC_CMD
-	/* If that failed, generate a CPU triple fault */
-	int	$0xff
-	/* If even that failed, hang the system */
-1:	hlt
-	jmp	1b
-	.size	reboot, . - reboot
+    /* Attempt a warm reboot via the keyboard controller */
+    movw      $WARM_REBOOT_MAGIC, WARM_REBOOT_FLAG
+    movb      $KC_CMD_RESET, %al
+    outb      %al, $KC_CMD
+    /* If that failed, generate a CPU triple fault */
+    int       $0xff
+    /* If even that failed, hang the system */
+1:  hlt
+    jmp       1b
+    .size     reboot, . - reboot
 
-	/* Global descriptor table */
-	.section ".rodata16", "aw", @progbits
-	.balign	8
+    /* Global descriptor table */
+    .section  ".rodata16", "aw", @progbits
+    .balign   8
 gdt:
-	.globl	gdtr
+    .globl    gdtr
 gdtr:
-	.word	gdt_limit
-	.long	gdt
-	/* 64 bit long mode code segment */
-	.org	( gdt + LM_CS )
-	.word	0, 0
-	.byte	0, 0x9b, 0x20, 0
-	/* 32 bit protected mode flat code segment */
-	.org	( gdt + FLAT_CS )
-	.word	0xffff, 0
-	.byte	0, 0x9f, 0xcf, 0
-	/* 32 bit protected mode flat data segment */
-	.org	( gdt + FLAT_DS )
-	.word	0xffff, 0
-	.byte	0, 0x93, 0xcf, 0
-	/* 16 bit flat real mode code segment with base BASE_ADDRESS */
-	.org	( gdt + REAL_CS )
-	.word	0xffff, ( BASE_ADDRESS & 0xffff )
-	.byte	( BASE_ADDRESS >> 16 ), 0x9b, 0x8f, 0
-	/* 16 bit flat real mode data segment with base BASE_ADDRESS */
-	.org	( gdt + REAL_DS )
-	.word	0xffff, ( BASE_ADDRESS & 0xffff )
-	.byte	( BASE_ADDRESS >> 16 ), 0x93, 0x8f, 0
-	.size	gdt, . - gdt
-	.equ	gdt_limit, . - gdt - 1
+    .word     gdt_limit
+    .long     gdt
+    /* 64 bit long mode code segment */
+    .org      (gdt + LM_CS)
+    .word     0, 0
+    .byte     0, 0x9b, 0x20, 0
+    /* 32 bit protected mode flat code segment */
+    .org      (gdt + FLAT_CS)
+    .word     0xffff, 0
+    .byte     0, 0x9f, 0xcf, 0
+    /* 32 bit protected mode flat data segment */
+    .org      (gdt + FLAT_DS)
+    .word     0xffff, 0
+    .byte     0, 0x93, 0xcf, 0
+    /* 16 bit flat real mode code segment with base BASE_ADDRESS */
+    .org      (gdt + REAL_CS)
+    .word     0xffff, (BASE_ADDRESS & 0xffff)
+    .byte     (BASE_ADDRESS >> 16), 0x9b, 0x8f, 0
+    /* 16 bit flat real mode data segment with base BASE_ADDRESS */
+    .org      (gdt + REAL_DS)
+    .word     0xffff, (BASE_ADDRESS & 0xffff)
+    .byte     (BASE_ADDRESS >> 16), 0x93, 0x8f, 0
+    .size     gdt, . - gdt
+    .equ      gdt_limit, . - gdt - 1
 
-	/* Interrupt descriptor table */
-	.section ".bss16", "aw", @nobits
-	.balign	8
+    /* Interrupt descriptor table */
+    .section  ".bss16", "aw", @nobits
+    .balign   8
 idt:
-	.space	( 256 * 8 )	/* 256 8-byte entries */
-	.size	idt, . - idt
-	.equ	idt_limit, . - idt - 1
+    .space    (256 * 8)    /* 256 8-byte entries */
+    .size     idt, . - idt
+    .equ      idt_limit, . - idt - 1
 
-	/* Interrupt descriptor table register */
-	.section ".rodata16", "aw", @progbits
-	.globl	idtr
+    /* Interrupt descriptor table register */
+    .section  ".rodata16", "aw", @progbits
+    .globl    idtr
 idtr:
-	.word	idt_limit
-	.long	idt
-	.size	idtr, . - idtr
+    .word     idt_limit
+    .long     idt
+    .size     idtr, . - idtr
 
-	/* Stack */
-	.section ".stack", "aw", @nobits
-	.balign	8
+    /* Stack */
+    .section  ".stack", "aw", @nobits
+    .balign   8
 _stack:
-	.space	( 64 * 1024 )
-	.size	_stack, . - _stack
+    .space    (64 * 1024)
+    .size     _stack, . - _stack
 _estack:

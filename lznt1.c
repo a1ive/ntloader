@@ -1,4 +1,22 @@
 /*
+ *  ntloader  --  Microsoft Windows NT6+ loader
+ *  Copyright (C) 2021  A1ive.
+ *
+ *  ntloader is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  ntloader is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with ntloader.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
  * Copyright (C) 2012 Michael Brown <mbrown@fensystems.co.uk>.
  *
  * This program is free software; you can redistribute it and/or
@@ -15,13 +33,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
- */
-
-/**
- * @file
- *
- * LZNT1 decompression
- *
  */
 
 #include <stdint.h>
@@ -140,8 +151,6 @@ ssize_t lznt1_decompress (const void *data, size_t len, void *buf)
     offset += 0x10;
     len = hdr->len;
   }
-  else
-    return -1;
 
   while (offset < len)
   {

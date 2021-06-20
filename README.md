@@ -41,7 +41,6 @@ menuentry "Boot Windows NT6+ PE" {
 }
 ```
 - GNU GRUB2
-  
 ```
 menuentry "Boot Windows NT6+ PE" {
     probe -s dev_uuid -u (hdx,y);
@@ -80,7 +79,6 @@ menuentry "Boot Windows NT6+" {
 }
 ```
 - GNU GRUB2
-  
 ```
 menuentry "Boot Windows NT6+" {
     probe -s dev_uuid -u (hdx,y);
@@ -140,9 +138,9 @@ kernel /ntloader uuid=%?% winload=/Windows/System32/winload.efi
 ```
 kernel /ntloader uuid=%?% file=/xxx.vhd sysroot=/Windows
 ```
-- Boot Windows 7 and load Vgashim/UefiSeven (UEFI)
+- Boot Windows 7 (UEFI)
 ```
-kernel /ntloader uuid=%?% win7 vgashim
+kernel /ntloader uuid=%?% win7
 ```
 - Hook UEFI `SecureBoot` variable (UEFI)
 ```
