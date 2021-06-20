@@ -66,6 +66,175 @@ struct acpi_table_header
   uint32_t creator_rev;
 } __attribute__ ((packed));
 
+#define ACPI_FADT_SIGNATURE "FACP"
+
+struct acpi_fadt
+{
+  struct acpi_table_header hdr;
+  uint32_t facs_addr;
+  uint32_t dsdt_addr;
+  uint8_t somefields1[20];
+  uint32_t pm1a;
+  uint8_t somefields2[8];
+  uint32_t pmtimer;
+  uint8_t somefields3[32];
+  uint32_t flags;
+  uint8_t somefields4[16];
+  uint64_t facs_xaddr;
+  uint64_t dsdt_xaddr;
+  uint8_t somefields5[96];
+} __attribute__ ((packed));
+
+#define ACPI_MADT_SIGNATURE "APIC"
+
+struct acpi_madt_entry_header
+{
+  uint8_t type;
+  uint8_t len;
+};
+
+struct acpi_madt
+{
+  struct acpi_table_header hdr;
+  uint32_t lapic_addr;
+  uint32_t flags;
+  struct acpi_madt_entry_header entries[0];
+} __attribute__ ((packed));
+
+enum
+{
+  ACPI_MADT_ENTRY_TYPE_LAPIC = 0,
+  ACPI_MADT_ENTRY_TYPE_IOAPIC = 1,
+  ACPI_MADT_ENTRY_TYPE_INTERRUPT_OVERRIDE = 2,
+  ACPI_MADT_ENTRY_TYPE_LAPIC_NMI = 4,
+  ACPI_MADT_ENTRY_TYPE_SAPIC = 6,
+  ACPI_MADT_ENTRY_TYPE_LSAPIC = 7,
+  ACPI_MADT_ENTRY_TYPE_PLATFORM_INT_SOURCE = 8
+};
+
+struct acpi_madt_entry_lapic
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t acpiid;
+  uint8_t apicid;
+  uint32_t flags;
+};
+
+struct acpi_madt_entry_ioapic
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t id;
+  uint8_t pad;
+  uint32_t address;
+  uint32_t global_sys_interrupt;
+};
+
+struct acpi_madt_entry_interrupt_override
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t bus;
+  uint8_t source;
+  uint32_t global_sys_interrupt;
+  uint16_t flags;
+} __attribute__ ((packed));
+
+
+struct acpi_madt_entry_lapic_nmi
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t acpiid;
+  uint16_t flags;
+  uint8_t lint;
+} __attribute__ ((packed));
+
+struct acpi_madt_entry_sapic
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t id;
+  uint8_t pad;
+  uint32_t global_sys_interrupt_base;
+  uint64_t addr;
+};
+
+struct acpi_madt_entry_lsapic
+{
+  struct acpi_madt_entry_header hdr;
+  uint8_t cpu_id;
+  uint8_t id;
+  uint8_t eid;
+  uint8_t pad[3];
+  uint32_t flags;
+  uint32_t cpu_uid;
+  uint8_t cpu_uid_str[0];
+};
+
+struct acpi_madt_entry_platform_int_source
+{
+  struct acpi_madt_entry_header hdr;
+  uint16_t flags;
+  uint8_t inttype;
+  uint8_t cpu_id;
+  uint8_t cpu_eid;
+  uint8_t sapic_vector;
+  uint32_t global_sys_int;
+  uint32_t src_flags;
+};
+
+enum
+{
+  ACPI_MADT_ENTRY_SAPIC_FLAGS_ENABLED = 1
+};
+
+#define ACPI_SLP_EN (1 << 13)
+#define ACPI_SLP_TYP_OFFSET 10
+
+enum
+{
+  ACPI_OPCODE_ZERO = 0, ACPI_OPCODE_ONE = 1,
+  ACPI_OPCODE_NAME = 8, ACPI_OPCODE_ALIAS = 0x06,
+  ACPI_OPCODE_BYTE_CONST = 0x0a,
+  ACPI_OPCODE_WORD_CONST = 0x0b,
+  ACPI_OPCODE_DWORD_CONST = 0x0c,
+  ACPI_OPCODE_STRING_CONST = 0x0d,
+  ACPI_OPCODE_SCOPE = 0x10,
+  ACPI_OPCODE_BUFFER = 0x11,
+  ACPI_OPCODE_PACKAGE = 0x12,
+  ACPI_OPCODE_METHOD = 0x14, ACPI_OPCODE_EXTOP = 0x5b,
+  ACPI_OPCODE_ADD = 0x72,
+  ACPI_OPCODE_CONCAT = 0x73,
+  ACPI_OPCODE_SUBTRACT = 0x74,
+  ACPI_OPCODE_MULTIPLY = 0x77,
+  ACPI_OPCODE_DIVIDE = 0x78,
+  ACPI_OPCODE_LSHIFT = 0x79,
+  ACPI_OPCODE_RSHIFT = 0x7a,
+  ACPI_OPCODE_AND = 0x7b,
+  ACPI_OPCODE_NAND = 0x7c,
+  ACPI_OPCODE_OR = 0x7d,
+  ACPI_OPCODE_NOR = 0x7e,
+  ACPI_OPCODE_XOR = 0x7f,
+  ACPI_OPCODE_CONCATRES = 0x84,
+  ACPI_OPCODE_MOD = 0x85,
+  ACPI_OPCODE_INDEX = 0x88,
+  ACPI_OPCODE_CREATE_DWORD_FIELD = 0x8a,
+  ACPI_OPCODE_CREATE_WORD_FIELD = 0x8b,
+  ACPI_OPCODE_CREATE_BYTE_FIELD = 0x8c,
+  ACPI_OPCODE_TOSTRING = 0x9c,
+  ACPI_OPCODE_IF = 0xa0, ACPI_OPCODE_ONES = 0xff
+};
+enum
+{
+  ACPI_EXTOPCODE_MUTEX = 0x01,
+  ACPI_EXTOPCODE_EVENT_OP = 0x02,
+  ACPI_EXTOPCODE_OPERATION_REGION = 0x80,
+  ACPI_EXTOPCODE_FIELD_OP = 0x81,
+  ACPI_EXTOPCODE_DEVICE_OP = 0x82,
+  ACPI_EXTOPCODE_PROCESSOR_OP = 0x83,
+  ACPI_EXTOPCODE_POWER_RES_OP = 0x84,
+  ACPI_EXTOPCODE_THERMAL_ZONE_OP = 0x85,
+  ACPI_EXTOPCODE_INDEX_FIELD_OP = 0x86,
+  ACPI_EXTOPCODE_BANK_FIELD_OP = 0x87,
+};
+
 struct acpi_bgrt
 {
   struct acpi_table_header header;
@@ -110,5 +279,8 @@ struct bmp_header
 
 extern void
 acpi_load_bgrt (void *file, size_t file_len);
+
+extern void
+acpi_shutdown (void);
 
 #endif

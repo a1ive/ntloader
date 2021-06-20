@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ntboot.h>
+#include <acpi.h>
 #include <efi.h>
 
 /** Stack cookie */
@@ -109,6 +110,7 @@ void die (const char *fmt, ...)
   getchar();
   printf ("\n");
   /* Reboot */
+  acpi_shutdown ();
   if (efi_systab)
   {
     rs = efi_systab->RuntimeServices;

@@ -502,7 +502,8 @@ int main (void)
   extract_initrd (initrd, initrd_len);
 
   /* Add INT 13 drive */
-  callback.drive = initialise_int13 ();
+  if (!efi_systab)
+    callback.drive = initialise_int13 ();
   /* Read bootmgr.exe into memory */
   if (! bootmgr)
     die ("FATAL: no bootmgr.exe | bootmgfw.efi\n");
