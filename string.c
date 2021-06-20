@@ -41,74 +41,66 @@
 #include <ctype.h>
 #include <wctype.h>
 
-void *memcpy (void *dest, const void *src, size_t len)
-{
-  void *edi = dest;
-  const void *esi = src;
-  int discard_ecx;
-
-  /* Perform dword-based copy for bulk, then byte-based for remainder */
-  __asm__ __volatile__ ("rep movsl"
-                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
-                        : "0" (edi), "1" (esi), "2" (len >> 2)
-                        : "memory");
-  __asm__ __volatile__ ("rep movsb"
-                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
-                        : "0" (edi), "1" (esi), "2" (len & 3)
-                        : "memory");
-  return dest;
-}
-
-static void *memcpy_reverse (void *dest, const void *src, size_t len)
-{
-  void *edi = (dest + len - 1);
-  const void *esi = (src + len - 1);
-  int discard_ecx;
-
-  /* Assume memmove() is not performance-critical, and perform a
-   * bytewise copy for simplicity.
-   *
-   * Disable interrupts to avoid known problems on platforms
-   * that assume the direction flag always remains cleared.
-   */
-  __asm__ __volatile__ ("pushf\n\t"
-                        "cli\n\t"
-                        "std\n\t"
-                        "rep movsb\n\t"
-                        "popf\n\t"
-                        : "=&D" (edi), "=&S" (esi), "=&c" (discard_ecx)
-                        : "0" (edi), "1" (esi), "2" (len)
-                        : "memory");
-  return dest;
-}
-
 void *memmove (void *dest, const void *src, size_t len)
 {
-  if (dest <= src)
-    return memcpy (dest, src, len);
+  char *d = (char *) dest;
+  const char *s = (const char *) src;
+
+  if (d < s)
+    while (len--)
+      *d++ = *s++;
   else
-    return memcpy_reverse (dest, src, len);
+  {
+    d += len;
+    s += len;
+
+    while (len--)
+      *--d = *--s;
+  }
+
+  return dest;
 }
+
+#ifdef __clang__
+#define VOLATILE_CLANG volatile
+#else
+#define VOLATILE_CLANG
+#endif
 
 void *memset (void *dest, int c, size_t len)
 {
-  void *edi = dest;
-  int eax = c;
-  int discard_ecx;
+  void *p = dest;
+  uint8_t pattern8 = c;
 
-  /* Expand byte to whole dword */
-  eax |= (eax << 8);
-  eax |= (eax << 16);
+  if (len >= 3 * sizeof (unsigned long))
+  {
+    unsigned long patternl = 0;
+    size_t i;
 
-  /* Perform dword-based set for bulk, then byte-based for remainder */
-  __asm__ __volatile__ ("rep stosl"
-                        : "=&D" (edi), "=&a" (eax), "=&c" (discard_ecx)
-                        : "0" (edi), "1" (eax), "2" (len >> 2)
-                        : "memory");
-  __asm__ __volatile__ ("rep stosb"
-                        : "=&D" (edi), "=&a" (eax), "=&c" (discard_ecx)
-                        : "0" (edi), "1" (eax), "2" (len & 3)
-                        : "memory");
+    for (i = 0; i < sizeof (unsigned long); i++)
+      patternl |= ((unsigned long) pattern8) << (8 * i);
+
+    while (len > 0 && (((intptr_t) p) & (sizeof (unsigned long) - 1)))
+    {
+      *(VOLATILE_CLANG uint8_t *) p = pattern8;
+      p = (uint8_t *) p + 1;
+      len--;
+    }
+    while (len >= sizeof (unsigned long))
+    {
+      *(VOLATILE_CLANG unsigned long *) p = patternl;
+      p = (unsigned long *) p + 1;
+      len -= sizeof (unsigned long);
+    }
+  }
+
+  while (len > 0)
+  {
+    *(VOLATILE_CLANG uint8_t *) p = pattern8;
+    p = (uint8_t *) p + 1;
+    len--;
+  }
+
   return dest;
 }
 

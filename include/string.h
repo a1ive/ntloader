@@ -29,8 +29,8 @@
 
 #include <stdint.h>
 
-extern void *memcpy (void *dest, const void *src, size_t len);
 extern void * memmove (void *dest, const void *src, size_t len);
+#define memcpy memmove
 extern void *memset (void *dest, int c, size_t len);
 extern int memcmp (const void *src1, const void *src2, size_t len);
 extern int strcmp (const char *str1, const char *str2);
