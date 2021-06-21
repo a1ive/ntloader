@@ -39,7 +39,7 @@
 #define BASE_SEG 0x4000
 
 /** Base linear address */
-#define BASE_ADDRESS ( BASE_SEG << 4 )
+#define BASE_ADDRESS (BASE_SEG << 4)
 
 /** 64 bit long mode code segment */
 #define LM_CS 0x10

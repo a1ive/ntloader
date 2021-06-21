@@ -38,11 +38,11 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <bfd.h>
-#include "efi.h"
-#include "efi/IndustryStandard/PeImage.h"
-#include "ntboot.h"
+#include "peimage.h"
 
 #define eprintf(...) fprintf ( stderr, __VA_ARGS__ )
+
+#define BASE_ADDRESS (0x4000 << 4)
 
 /* Maintain compatibility with binutils 2.34 */
 #ifndef bfd_get_section_vma
@@ -317,7 +317,8 @@ static void generate_pe_reloc (struct pe_relocs **pe_reltab,
  * @v rel   Relocation entry
  * @v pe_reltab   PE relocation table to fill in
  */
-static void process_reloc (bfd *bfd __unused, asection *section, arelent *rel,
+static void process_reloc (bfd *bfd __attribute__ ((unused)),
+                           asection *section, arelent *rel,
                            struct pe_relocs **pe_reltab)
 {
   reloc_howto_type *howto = rel->howto;
