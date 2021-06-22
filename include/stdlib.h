@@ -55,12 +55,12 @@ typedef struct mm_region
 
 extern mm_region_t mm_base;
 
-void mm_init_region (void *addr, size_t size);
-void *malloc (size_t size);
-void *zalloc (size_t size);
-void free (void *ptr);
-void *realloc (void *ptr, size_t size);
-void *memalign (size_t align, size_t size);
+extern void mm_init_region (void *addr, size_t size);
+extern void *malloc (size_t size);
+extern void *zalloc (size_t size);
+extern void free (void *ptr);
+extern void *realloc (void *ptr, size_t size);
+extern void *memalign (size_t align, size_t size);
 
 extern unsigned long strtoul (const char *nptr, char **endptr, int base);
 
