@@ -19,9 +19,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 #include <ntboot.h>
 #include <acpi.h>
 #include <efi.h>
+#include <efilib.h>
 
 /** Stack cookie */
 unsigned long __stack_chk_guard;
@@ -99,7 +101,7 @@ void __stack_chk_fail (void)
  */
 void die (const char *fmt, ...)
 {
-  EFI_RUNTIME_SERVICES *rs;
+  efi_runtime_services_t *rs;
   va_list args;
   /* Print message */
   va_start (args, fmt);
@@ -113,8 +115,8 @@ void die (const char *fmt, ...)
   acpi_shutdown ();
   if (efi_systab)
   {
-    rs = efi_systab->RuntimeServices;
-    rs->ResetSystem (EfiResetWarm, 0, 0, NULL);
+    rs = efi_systab->runtime_services;
+    rs->reset_system (EFI_RESET_WARM, 0, 0, NULL);
     printf ("Failed to reboot\\n");
   }
   else
@@ -143,11 +145,11 @@ void pause_boot (void)
 static void gotoxy (uint16_t x, uint16_t y)
 {
   struct bootapp_callback_params params;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *conout;
+  efi_simple_text_output_interface_t *conout;
   if (efi_systab)
   {
-    conout = efi_systab->ConOut;
-    conout->SetCursorPosition (conout, x, y);
+    conout = efi_systab->con_out;
+    conout->set_cursor_position (conout, x, y);
   }
   else
   {
@@ -163,16 +165,16 @@ static void gotoxy (uint16_t x, uint16_t y)
 void cls (void)
 {
   struct bootapp_callback_params params;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *conout;
+  efi_simple_text_output_interface_t *conout;
   uint8_t ch = ' ';
-  INT32 orig_attr;
+  efi_int32_t orig_attr;
   if (efi_systab)
   {
-    conout = efi_systab->ConOut;
-    orig_attr = conout->Mode->Attribute;
-    conout->SetAttribute (conout, 0x00);
-    conout->ClearScreen (conout);
-    conout->SetAttribute (conout, orig_attr);
+    conout = efi_systab->con_out;
+    orig_attr = conout->mode->attribute;
+    conout->set_attributes (conout, 0x00);
+    conout->clear_screen (conout);
+    conout->set_attributes (conout, orig_attr);
   }
   else
   {

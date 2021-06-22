@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include <ntboot.h>
 #include <peloader.h>
@@ -52,17 +53,13 @@
 #include <lznt1.h>
 #include <paging.h>
 #include <efi.h>
+#include <efilib.h>
 #include <efiblock.h>
 #include <efidisk.h>
 #include <bcd.h>
 #include <charset.h>
 #include <acpi.h>
 #include <linux.h>
-#include <efi/Protocol/BlockIo.h>
-#include <efi/Protocol/DevicePath.h>
-#include <efi/Protocol/GraphicsOutput.h>
-#include <efi/Protocol/LoadedImage.h>
-#include <efi/Protocol/SimpleFileSystem.h>
 
 /** Start of our image (defined by linker) */
 extern char _start[];
@@ -83,32 +80,6 @@ struct linux_kernel_params *bp;
 
 /** bootmgr.exe file */
 static struct vdisk_file *bootmgr;
-
-/** EFI system table */
-EFI_SYSTEM_TABLE *efi_systab = 0;
-
-/** EFI image handle */
-EFI_HANDLE efi_image_handle = 0;
-
-/** Block I/O protocol GUID */
-EFI_GUID efi_block_io_protocol_guid
-  = EFI_BLOCK_IO_PROTOCOL_GUID;
-
-/** Device path protocol GUID */
-EFI_GUID efi_device_path_protocol_guid
-  = EFI_DEVICE_PATH_PROTOCOL_GUID;
-
-/** Graphics output protocol GUID */
-EFI_GUID efi_graphics_output_protocol_guid
-  = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-
-/** Loaded image protocol GUID */
-EFI_GUID efi_loaded_image_protocol_guid
-  = EFI_LOADED_IMAGE_PROTOCOL_GUID;
-
-/** Simple file system protocol GUID */
-EFI_GUID efi_simple_file_system_protocol_guid
-  = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 
 /** Minimal length of embedded bootmgr.exe */
 #define BOOTMGR_MIN_LEN 16384
@@ -329,7 +300,7 @@ extract_initrd (void *initrd, uint32_t initrd_len)
       DBG ("...extracting LZNT1-compressed initrd\n");
       if (efi_systab)
       {
-        dst = efi_allocate_pages (BYTES_TO_PAGES (dst_len));
+        dst = efi_allocate_any_pages (BYTES_TO_PAGES (dst_len));
       }
       else
       {
@@ -346,45 +317,45 @@ extract_initrd (void *initrd, uint32_t initrd_len)
   }
 }
 
-static void efi_load_initrd (EFI_HANDLE handle)
+static void efi_load_initrd (efi_handle_t handle)
 {
-  EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
-  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs;
-  EFI_FILE_PROTOCOL *root;
-  EFI_FILE_PROTOCOL *file;
-  UINT64 size;
-  CHAR16 wname[256];
-  EFI_STATUS efirc;
+  efi_boot_services_t *bs = efi_systab->boot_services;
+  efi_simple_fs_protocol_t *fs;
+  efi_file_protocol_t *root;
+  efi_file_protocol_t *file;
+  efi_uint64_t size;
+  efi_char16_t wname[256];
+  efi_status_t efirc;
 
   /* Open file system */
-  efirc = bs->OpenProtocol (handle, &efi_simple_file_system_protocol_guid,
-                            (void *)&fs, efi_image_handle, NULL,
-                            EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+  efirc = bs->open_protocol (handle, &efi_sfs_protocol_guid,
+                             (void *)&fs, efi_image_handle, NULL,
+                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   if (efirc != EFI_SUCCESS)
     die ("Could not open simple file system.\n");
 
   /* Open root directory */
-  efirc = fs->OpenVolume (fs, &root);
+  efirc = fs->open_volume (fs, &root);
   if (efirc != EFI_SUCCESS)
     die ("Could not open root directory.\n");
 
   /* Close file system */
-  bs->CloseProtocol (handle, &efi_simple_file_system_protocol_guid,
-                     efi_image_handle, NULL);
+  bs->close_protocol (handle, &efi_sfs_protocol_guid,
+                      efi_image_handle, NULL);
   memset (wname, 0 ,sizeof (wname));
-  grub_utf8_to_utf16 (wname, sizeof (wname),
-                      (uint8_t *)nt_cmdline->initrd_path, -1, NULL);
-  efirc = root->Open (root, &file, wname, EFI_FILE_MODE_READ, 0);
+  utf8_to_utf16 (wname, sizeof (wname),
+                 (uint8_t *)nt_cmdline->initrd_path, -1, NULL);
+  efirc = root->file_open (root, &file, wname, EFI_FILE_MODE_READ, 0);
   if (efirc != EFI_SUCCESS)
     die ("Could not open %ls.\n", wname);
-  file->SetPosition (file, 0xFFFFFFFFFFFFFFFF);
-  file->GetPosition (file, &size);
-  file->SetPosition (file, 0);
+  file->set_pos (file, 0xFFFFFFFFFFFFFFFF);
+  file->get_pos (file, &size);
+  file->set_pos (file, 0);
   if (!size)
     die ("Could not get initrd size\n");
   initrd_len = size;
-  initrd = efi_allocate_pages (BYTES_TO_PAGES (initrd_len));
-  efirc = file->Read (file, (UINTN *)&initrd_len, initrd);
+  initrd = malloc (initrd_len);
+  efirc = file->file_read (file, &initrd_len, initrd);
   if (efirc != EFI_SUCCESS)
     die ("Could not read from file.\n");
 
@@ -404,16 +375,13 @@ static void efi_load_initrd (EFI_HANDLE handle)
   efi_boot (bootmgr);
 }
 
-EFI_STATUS EFIAPI efi_main (EFI_HANDLE image_handle,EFI_SYSTEM_TABLE *systab)
+efi_status_t EFIAPI efi_main (efi_handle_t image_handle,efi_system_table_t *systab)
 {
-  EFI_BOOT_SERVICES *bs;
-  EFI_LOADED_IMAGE_PROTOCOL *loaded;
-  EFI_STATUS efirc;
+  efi_loaded_image_t *loaded;
   size_t cmdline_len = 0;
 
   efi_image_handle = image_handle;
   efi_systab = systab;
-  bs = systab->BootServices;
 
   /* Initialise stack cookie */
   init_cookie ();
@@ -421,27 +389,26 @@ EFI_STATUS EFIAPI efi_main (EFI_HANDLE image_handle,EFI_SYSTEM_TABLE *systab)
   /* Print welcome banner */
   cls ();
   print_banner ();
+  efi_mm_init ();
   /* Get loaded image protocol */
-  efirc = bs->OpenProtocol (image_handle, &efi_loaded_image_protocol_guid,
-                            (void **)&loaded, image_handle, NULL,
-                            EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-  if (efirc != EFI_SUCCESS)
+  loaded = efi_get_loaded_image (image_handle);
+  if (!loaded)
     die ("Could not open loaded image protocol\n");
 
-  cmdline_len = (loaded->LoadOptionsSize / sizeof (wchar_t));
-  cmdline = efi_malloc (4 * cmdline_len + 1);
+  cmdline_len = (loaded->load_options_size / sizeof (wchar_t));
+  cmdline = malloc (4 * cmdline_len + 1);
 
   /* Convert command line to ASCII */
-  *grub_utf16_to_utf8 ((uint8_t *) cmdline, loaded->LoadOptions, cmdline_len) = 0;
+  *utf16_to_utf8 ((uint8_t *) cmdline, loaded->load_options, cmdline_len) = 0;
 
   /* Process command line */
   process_cmdline (cmdline);
-  efi_free (cmdline);
+  free (cmdline);
   DBG ("systab=%p image_handle=%p\n", systab, image_handle);
   if (! nt_cmdline->initrd_path[0])
     die ("initrd not found.\n");
 
-  efi_load_initrd (loaded->DeviceHandle);
+  efi_load_initrd (loaded->device_handle);
 
   return EFI_SUCCESS;
 }
@@ -467,13 +434,14 @@ int main (void)
     cmdline = (char *)(intptr_t)bp->cmd_line_ptr;
     initrd = (void*)(intptr_t)bp->ramdisk_image;
     initrd_len = bp->ramdisk_size;
+    efi_mm_init ();
   }
 
   /* Process command line */
   process_cmdline (cmdline);
 
   if (efi_systab)
-    {
+  {
     DBG ("systab=%p img_handle=%p bp=%p\n", efi_systab, efi_image_handle, bp);
     DBG ("cmdline=0x%x+0x%x, %s\n", bp->cmd_line_ptr, bp->cmdline_size,
          (char *)(intptr_t) bp->cmd_line_ptr);

@@ -1,9 +1,9 @@
 VERSION := v1.0.8
 OBJECTS := prefix.o startup.o callback.o vsprintf.o string.o
-OBJECTS += int13.o vdisk.o cpio.o stdio.o misc.o
+OBJECTS += int13.o vdisk.o cpio.o stdio.o misc.o mm.o
 OBJECTS += efiblock.o cmdline.o peloader.o main.o efidisk.o
 OBJECTS += msdos.o gpt.o fsuuid.o lznt1.o bcd.o biosdisk.o reg.o
-OBJECTS += acpi.o paging.o memmap.o
+OBJECTS += acpi.o paging.o memmap.o efimm.o efilib.o
 
 OBJECTS_i386 := $(patsubst %.o,%.i386.o,$(OBJECTS))
 OBJECTS_x86_64 := $(patsubst %.o,%.x86_64.o,$(OBJECTS))

@@ -45,4 +45,7 @@ strncpy (char *dest, const char *src, int c)
   return dest;
 }
 
+extern char *strchr (const char *s, int c);
+extern char *strrchr (const char *s, int c);
+
 #endif /* _STRING_H */

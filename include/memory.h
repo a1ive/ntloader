@@ -16,25 +16,39 @@
  *  along with ntloader.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _EFIDISK_H
-#define _EFIDISK_H 1
+#ifndef _MEMORY_HEADER
+#define _MEMORY_HEADER    1
 
-#include <efi.h>
+#include <stdint.h>
 
-struct efidisk_data
+typedef enum memory_type
 {
-  char name[16];
-  efi_handle_t handle;
-  efi_device_path_protocol_t *dp;
-  efi_device_path_protocol_t *ldp;
-  efi_block_io_t *bio;
-  struct efidisk_data *next;
+  MEMORY_AVAILABLE = 1,
+  MEMORY_RESERVED = 2,
+  MEMORY_ACPI = 3,
+  MEMORY_NVS = 4,
+  MEMORY_BADRAM = 5,
+  MEMORY_PERSISTENT = 7,
+  MEMORY_PERSISTENT_LEGACY = 12,
+  MEMORY_COREBOOT_TABLES = 16,
+  MEMORY_CODE = 20,
+  /* This one is special: it's used internally but is never reported
+     by firmware. Don't use -1 as it's used internally for other purposes. */
+  MEMORY_HOLE = -2,
+  MEMORY_MAX = 0x10000
+}
+memory_type_t;
+
+struct mmap_region
+{
+  struct mmap_region *next;
+  uint64_t start;
+  uint64_t end;
+  memory_type_t type;
+  int handle;
+  int priority;
 };
 
-extern int efidisk_read (void *disk, uint64_t sector, size_t len, void *buf);
+typedef int (*memory_hook_t) (uint64_t, uint64_t, memory_type_t, void *);
 
-extern void efidisk_iterate (void);
-extern void efidisk_fini (void);
-extern void efidisk_init (void);
-
-#endif /* _EFIBLOCK_H */
+#endif

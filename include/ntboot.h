@@ -2,29 +2,21 @@
 #define _NTBOOT_H
 
 /*
- * Copyright (C) 2012 Michael Brown <mbrown@fensystems.co.uk>.
+ *  ntloader  --  Microsoft Windows NT6+ loader
+ *  Copyright (C) 2021  A1ive.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ *  ntloader is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *  ntloader is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
- */
-
-/**
- * @file
- *
- * NT boot loader
- *
+ *  You should have received a copy of the GNU General Public License
+ *  along with ntloader.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /** Debug switch */
@@ -70,7 +62,75 @@
 #define PAGE_SIZE 4096
 
 #define BYTES_TO_PAGES(bytes)   (((bytes) + 0xfff) >> 12)
+#define BYTES_TO_PAGES_DOWN(bytes)  ((bytes) >> 12)
 #define PAGES_TO_BYTES(pages)   ((pages) << 12)
+
+#define ALIGN_UP(addr, align) \
+    (((addr) + (typeof (addr)) (align) - 1) & ~((typeof (addr)) (align) - 1))
+#define ALIGN_UP_OVERHEAD(addr, align) ((-(addr)) & ((typeof (addr)) (align) - 1))
+#define ALIGN_DOWN(addr, align) \
+    ((addr) & ~((typeof (addr)) (align) - 1))
+#define ARRAY_SIZE(array) (sizeof (array) / sizeof (array[0]))
+
+struct packed_guid
+{
+  uint32_t data1;
+  uint16_t data2;
+  uint16_t data3;
+  uint8_t data4[8];
+} __attribute__ ((packed));
+typedef struct packed_guid packed_guid_t;
+
+struct unaligned_uint16
+{
+  uint16_t val;
+} __attribute__ ((packed));
+
+struct unaligned_uint32
+{
+  uint32_t val;
+} __attribute__ ((packed));
+
+struct unaligned_uint64
+{
+  uint64_t val;
+} __attribute__ ((packed));
+
+static inline uint16_t get_unaligned16 (const void *ptr)
+{
+  const struct unaligned_uint16 *dd = (const struct unaligned_uint16 *) ptr;
+  return dd->val;
+}
+
+static inline void set_unaligned16 (void *ptr, uint16_t val)
+{
+  struct unaligned_uint16 *dd = (struct unaligned_uint16 *) ptr;
+  dd->val = val;
+}
+
+static inline uint32_t get_unaligned32 (const void *ptr)
+{
+  const struct unaligned_uint32 *dd = (const struct unaligned_uint32 *) ptr;
+  return dd->val;
+}
+
+static inline void set_unaligned32 (void *ptr, uint32_t val)
+{
+  struct unaligned_uint32 *dd = (struct unaligned_uint32 *) ptr;
+  dd->val = val;
+}
+
+static inline uint64_t get_unaligned64 (const void *ptr)
+{
+  const struct unaligned_uint64 *dd = (const struct unaligned_uint64 *) ptr;
+  return dd->val;
+}
+
+static inline void set_unaligned64 (void *ptr, uint64_t val)
+{
+  struct unaligned_uint64 *dd = (struct unaligned_uint64 *) ptr;
+  dd->val = val;
+}
 
 /**
  * Calculate start page number

@@ -19,12 +19,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <ntboot.h>
 #include <acpi.h>
 #include <efi.h>
 #include <efidisk.h>
-#include <efi/Protocol/GraphicsOutput.h>
+#include <efilib.h>
 
 static inline uint32_t
 decode_length (const uint8_t *ptr, int *numlen)
@@ -316,12 +317,11 @@ get_sleep_type (uint8_t *table, uint8_t *ptr, uint8_t *end,
 }
 
 static void *
-efi_acpi_malloc (UINTN size)
+efi_acpi_malloc (size_t size)
 {
-  EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
-  EFI_STATUS efirc;
+  efi_status_t efirc;
   void *ptr = NULL;
-  efirc = bs->AllocatePool (EfiACPIReclaimMemory, size, &ptr);
+  efirc = efi_allocate_pool (EFI_ACPI_RECLAIM_MEMORY, size, &ptr);
   if (efirc != EFI_SUCCESS || ! ptr)
     die ("Could not allocate memory.\n");
   return ptr;
@@ -340,15 +340,15 @@ acpi_byte_checksum (void *base, size_t size)
 static struct acpi_rsdp_v10 *
 efi_acpi_get_rsdpv1 (void)
 {
-  UINTN i;
-  static EFI_GUID acpi_guid = EFI_ACPI_TABLE_GUID;
+  efi_uintn_t i;
+  static efi_packed_guid_t acpi_guid = EFI_ACPI_TABLE_GUID;
 
-  for (i = 0; i < efi_systab->NumberOfTableEntries; i++)
+  for (i = 0; i < efi_systab->num_table_entries; i++)
   {
-    EFI_GUID *guid = &efi_systab->ConfigurationTable[i].VendorGuid;
+    efi_packed_guid_t *guid = &efi_systab->configuration_table[i].vendor_guid;
 
-    if (! memcmp (guid, &acpi_guid, sizeof (EFI_GUID)))
-      return efi_systab->ConfigurationTable[i].VendorTable;
+    if (! memcmp (guid, &acpi_guid, sizeof (efi_packed_guid_t)))
+      return efi_systab->configuration_table[i].vendor_table;
   }
   return 0;
 }
@@ -356,15 +356,15 @@ efi_acpi_get_rsdpv1 (void)
 static struct acpi_rsdp_v20 *
 efi_acpi_get_rsdpv2 (void)
 {
-  UINTN i;
-  static EFI_GUID acpi20_guid = EFI_ACPI_20_TABLE_GUID;
+  efi_uintn_t i;
+  static efi_packed_guid_t acpi20_guid = EFI_ACPI_20_TABLE_GUID;
 
-  for (i = 0; i < efi_systab->NumberOfTableEntries; i++)
+  for (i = 0; i < efi_systab->num_table_entries; i++)
   {
-    EFI_GUID *guid = &efi_systab->ConfigurationTable[i].VendorGuid;
+    efi_packed_guid_t *guid = &efi_systab->configuration_table[i].vendor_guid;
 
-    if (! memcmp (guid, &acpi20_guid, sizeof (EFI_GUID)))
-      return efi_systab->ConfigurationTable[i].VendorTable;
+    if (! memcmp (guid, &acpi20_guid, sizeof (efi_packed_guid_t)))
+      return efi_systab->configuration_table[i].vendor_table;
   }
   return 0;
 }
@@ -439,7 +439,7 @@ acpi_get_rsdpv1 (void)
   return bios_acpi_get_rsdpv1 ();
 }
 
-static BOOLEAN
+static efi_boolean_t
 bmp_sanity_check (char *buf, size_t size)
 {
   // check BMP magic
@@ -484,43 +484,40 @@ acpi_get_bgrt (struct acpi_table_header *xsdt)
 static void
 efi_gop_get_best_mode (uint32_t *w, uint32_t *h)
 {
-  EFI_GRAPHICS_OUTPUT_PROTOCOL* gop = 0;
-  EFI_BOOT_SERVICES *bs = efi_systab->BootServices;
-  EFI_STATUS status;
+  efi_gop_t *gop = 0;
   uint32_t mode, max_val = 0, val;
-  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info = 0;
-  UINTN size;
+  struct efi_gop_mode_info *info = 0;
+  efi_uintn_t size;
+  efi_status_t status;
 
   *w = 1024;
   *h = 768;
-  status = bs->LocateProtocol (&efi_graphics_output_protocol_guid,
-                               NULL, (void **) &gop);
-  if (status != EFI_SUCCESS)
+  gop = efi_locate_protocol (&efi_gop_guid, NULL);
+  if (!gop)
   {
     DBG ("Graphics Output Protocol not found.\n");
     return;
   }
 
-  DBG ("%d modes detected.\n", gop->Mode->MaxMode);
-  for (mode = 0; mode < gop->Mode->MaxMode; mode++)
+  DBG ("%d modes detected.\n", gop->mode->max_mode);
+  for (mode = 0; mode < gop->mode->max_mode; mode++)
   {
-    status = gop->QueryMode (gop, mode, &size, &info);
+    status = gop->query_mode (gop, mode, &size, &info);
     if (status != EFI_SUCCESS)
     {
       info = 0;
       continue;
     }
 
-    DBG ("mode %d: %dx%d\n", mode,
-         info->HorizontalResolution, info->VerticalResolution);
-    val = info->HorizontalResolution * info->VerticalResolution;
+    DBG ("mode %d: %dx%d\n", mode, info->width, info->height);
+    val = info->width * info->height;
     if (val > max_val)
     {
       max_val = val;
-      *w = info->HorizontalResolution;
-      *h = info->VerticalResolution;
+      *w = info->width;
+      *h = info->height;
     }
-    efi_free (info);
+    efi_free_pool (info);
   }
 }
 

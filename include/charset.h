@@ -16,48 +16,48 @@
  *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef GRUB_CHARSET_HEADER
-#define GRUB_CHARSET_HEADER 1
+#ifndef CHARSET_HEADER
+#define CHARSET_HEADER 1
 
 #include <stdint.h>
 
-#define GRUB_UINT8_1_LEADINGBIT 0x80
-#define GRUB_UINT8_2_LEADINGBITS 0xc0
-#define GRUB_UINT8_3_LEADINGBITS 0xe0
-#define GRUB_UINT8_4_LEADINGBITS 0xf0
-#define GRUB_UINT8_5_LEADINGBITS 0xf8
-#define GRUB_UINT8_6_LEADINGBITS 0xfc
-#define GRUB_UINT8_7_LEADINGBITS 0xfe
+#define UINT8_1_LEADINGBIT 0x80
+#define UINT8_2_LEADINGBITS 0xc0
+#define UINT8_3_LEADINGBITS 0xe0
+#define UINT8_4_LEADINGBITS 0xf0
+#define UINT8_5_LEADINGBITS 0xf8
+#define UINT8_6_LEADINGBITS 0xfc
+#define UINT8_7_LEADINGBITS 0xfe
 
-#define GRUB_UINT8_1_TRAILINGBIT 0x01
-#define GRUB_UINT8_2_TRAILINGBITS 0x03
-#define GRUB_UINT8_3_TRAILINGBITS 0x07
-#define GRUB_UINT8_4_TRAILINGBITS 0x0f
-#define GRUB_UINT8_5_TRAILINGBITS 0x1f
-#define GRUB_UINT8_6_TRAILINGBITS 0x3f
+#define UINT8_1_TRAILINGBIT 0x01
+#define UINT8_2_TRAILINGBITS 0x03
+#define UINT8_3_TRAILINGBITS 0x07
+#define UINT8_4_TRAILINGBITS 0x0f
+#define UINT8_5_TRAILINGBITS 0x1f
+#define UINT8_6_TRAILINGBITS 0x3f
 
-#define GRUB_MAX_UTF8_PER_UTF16 4
+#define MAX_UTF8_PER_UTF16 4
 /* You need at least one UTF-8 byte to have one UTF-16 word.
    You need at least three UTF-8 bytes to have 2 UTF-16 words (surrogate pairs).
  */
-#define GRUB_MAX_UTF16_PER_UTF8 1
-#define GRUB_MAX_UTF8_PER_CODEPOINT 4
+#define MAX_UTF16_PER_UTF8 1
+#define MAX_UTF8_PER_CODEPOINT 4
 
-#define GRUB_UCS2_LIMIT 0x10000
-#define GRUB_UTF16_UPPER_SURROGATE(code) \
-  (0xD800 | ((((code) - GRUB_UCS2_LIMIT) >> 10) & 0x3ff))
-#define GRUB_UTF16_LOWER_SURROGATE(code) \
-  (0xDC00 | (((code) - GRUB_UCS2_LIMIT) & 0x3ff))
+#define UCS2_LIMIT 0x10000
+#define UTF16_UPPER_SURROGATE(code) \
+  (0xD800 | ((((code) - UCS2_LIMIT) >> 10) & 0x3ff))
+#define UTF16_LOWER_SURROGATE(code) \
+  (0xDC00 | (((code) - UCS2_LIMIT) & 0x3ff))
 
 /* Process one character from UTF8 sequence. 
    At beginning set *code = 0, *count = 0. Returns 0 on failure and
    1 on success. *count holds the number of trailing bytes.  */
 static inline int
-grub_utf8_process (uint8_t c, uint32_t *code, int *count)
+utf8_process (uint8_t c, uint32_t *code, int *count)
 {
   if (*count)
   {
-    if ((c & GRUB_UINT8_2_LEADINGBITS) != GRUB_UINT8_1_LEADINGBIT)
+    if ((c & UINT8_2_LEADINGBITS) != UINT8_1_LEADINGBIT)
     {
       *count = 0;
       /* invalid */
@@ -66,7 +66,7 @@ grub_utf8_process (uint8_t c, uint32_t *code, int *count)
     else
     {
       *code <<= 6;
-      *code |= (c & GRUB_UINT8_6_TRAILINGBITS);
+      *code |= (c & UINT8_6_TRAILINGBITS);
       (*count)--;
       /* Overlong.  */
       if ((*count == 1 && *code <= 0x1f) || (*count == 2 && *code <= 0xf))
@@ -79,15 +79,15 @@ grub_utf8_process (uint8_t c, uint32_t *code, int *count)
     }
   }
 
-  if ((c & GRUB_UINT8_1_LEADINGBIT) == 0)
+  if ((c & UINT8_1_LEADINGBIT) == 0)
   {
     *code = c;
     return 1;
   }
-  if ((c & GRUB_UINT8_3_LEADINGBITS) == GRUB_UINT8_2_LEADINGBITS)
+  if ((c & UINT8_3_LEADINGBITS) == UINT8_2_LEADINGBITS)
   {
     *count = 1;
-    *code = c & GRUB_UINT8_5_TRAILINGBITS;
+    *code = c & UINT8_5_TRAILINGBITS;
     /* Overlong */
     if (*code <= 1)
     {
@@ -97,16 +97,16 @@ grub_utf8_process (uint8_t c, uint32_t *code, int *count)
     }
     return 1;
   }
-  if ((c & GRUB_UINT8_4_LEADINGBITS) == GRUB_UINT8_3_LEADINGBITS)
+  if ((c & UINT8_4_LEADINGBITS) == UINT8_3_LEADINGBITS)
   {
     *count = 2;
-    *code = c & GRUB_UINT8_4_TRAILINGBITS;
+    *code = c & UINT8_4_TRAILINGBITS;
     return 1;
   }
-  if ((c & GRUB_UINT8_5_LEADINGBITS) == GRUB_UINT8_4_LEADINGBITS)
+  if ((c & UINT8_5_LEADINGBITS) == UINT8_4_LEADINGBITS)
   {
     *count = 3;
-    *code = c & GRUB_UINT8_3_TRAILINGBITS;
+    *code = c & UINT8_3_TRAILINGBITS;
     return 1;
   }
   return 0;
@@ -119,7 +119,7 @@ grub_utf8_process (uint8_t c, uint32_t *code, int *count)
    If SRCEND is not NULL, then *SRCEND is set to the next byte after the
    last byte used in SRC.  */
 static inline size_t
-grub_utf8_to_utf16 (uint16_t *dest, size_t destsize,
+utf8_to_utf16 (uint16_t *dest, size_t destsize,
                     const uint8_t *src, size_t srcsize,
                     const uint8_t **srcend)
 {
@@ -135,7 +135,7 @@ grub_utf8_to_utf16 (uint16_t *dest, size_t destsize,
     int was_count = count;
     if (srcsize != (size_t)-1)
       srcsize--;
-    if (!grub_utf8_process (*src++, &code, &count))
+    if (!utf8_process (*src++, &code, &count))
     {
       code = '?';
       count = 0;
@@ -147,12 +147,12 @@ grub_utf8_to_utf16 (uint16_t *dest, size_t destsize,
       continue;
     if (code == 0)
       break;
-    if (destsize < 2 && code >= GRUB_UCS2_LIMIT)
+    if (destsize < 2 && code >= UCS2_LIMIT)
       break;
-    if (code >= GRUB_UCS2_LIMIT)
+    if (code >= UCS2_LIMIT)
     {
-      *p++ = GRUB_UTF16_UPPER_SURROGATE (code);
-      *p++ = GRUB_UTF16_LOWER_SURROGATE (code);
+      *p++ = UTF16_UPPER_SURROGATE (code);
+      *p++ = UTF16_LOWER_SURROGATE (code);
       destsize -= 2;
     }
     else
@@ -170,23 +170,23 @@ grub_utf8_to_utf16 (uint16_t *dest, size_t destsize,
 /* Determine the last position where the UTF-8 string [beg, end) can
    be safely cut. */
 static inline size_t
-grub_getend (const char *beg, const char *end)
+getend (const char *beg, const char *end)
 {
   const char *ptr;
   for (ptr = end - 1; ptr >= beg; ptr--)
-    if ((*ptr & GRUB_UINT8_2_LEADINGBITS) != GRUB_UINT8_1_LEADINGBIT)
+    if ((*ptr & UINT8_2_LEADINGBITS) != UINT8_1_LEADINGBIT)
       break;
   if (ptr < beg)
     return 0;
-  if ((*ptr & GRUB_UINT8_1_LEADINGBIT) == 0)
+  if ((*ptr & UINT8_1_LEADINGBIT) == 0)
     return ptr + 1 - beg;
-  if ((*ptr & GRUB_UINT8_3_LEADINGBITS) == GRUB_UINT8_2_LEADINGBITS
+  if ((*ptr & UINT8_3_LEADINGBITS) == UINT8_2_LEADINGBITS
       && ptr + 2 <= end)
     return ptr + 2 - beg;
-  if ((*ptr & GRUB_UINT8_4_LEADINGBITS) == GRUB_UINT8_3_LEADINGBITS
+  if ((*ptr & UINT8_4_LEADINGBITS) == UINT8_3_LEADINGBITS
       && ptr + 3 <= end)
     return ptr + 3 - beg;
-  if ((*ptr & GRUB_UINT8_5_LEADINGBITS) == GRUB_UINT8_4_LEADINGBITS
+  if ((*ptr & UINT8_5_LEADINGBITS) == UINT8_4_LEADINGBITS
       && ptr + 4 <= end)
     return ptr + 4 - beg;
   /* Invalid character or incomplete. Cut before it.  */
@@ -195,7 +195,7 @@ grub_getend (const char *beg, const char *end)
 
 /* Convert UTF-16 to UTF-8.  */
 static inline uint8_t *
-grub_utf16_to_utf8 (uint8_t *dest, const uint16_t *src,
+utf16_to_utf8 (uint8_t *dest, const uint16_t *src,
                     size_t size)
 {
   uint32_t code_high = 0;

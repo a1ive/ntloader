@@ -40,6 +40,7 @@
 #include <bootapp.h>
 #include <ntboot.h>
 #include <efi.h>
+#include <efilib.h>
 
 /**
  * Print character to console
@@ -48,7 +49,7 @@
  */
 int putchar (int character)
 {
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *conout;
+  efi_simple_text_output_interface_t *conout;
   struct bootapp_callback_params params;
   wchar_t wbuf[2];
   /* Convert LF to CR,LF */
@@ -59,10 +60,10 @@ int putchar (int character)
   /* Print character to EFI/BIOS console as applicable */
   if (efi_systab)
   {
-    conout = efi_systab->ConOut;
+    conout = efi_systab->con_out;
     wbuf[0] = character;
     wbuf[1] = 0;
-    conout->OutputString (conout, wbuf);
+    conout->output_string (conout, wbuf);
   }
   else
   {
@@ -82,20 +83,20 @@ int putchar (int character)
  */
 int getchar (void)
 {
-  EFI_BOOT_SERVICES *bs;
-  EFI_SIMPLE_TEXT_INPUT_PROTOCOL *conin;
-  EFI_INPUT_KEY key;
-  UINTN index;
+  efi_boot_services_t *bs;
+  efi_simple_input_interface_t *conin;
+  efi_input_key_t key;
+  efi_uintn_t index;
   struct bootapp_callback_params params;
   int character;
   /* Get character */
   if (efi_systab)
   {
-    bs = efi_systab->BootServices;
-    conin = efi_systab->ConIn;
-    bs->WaitForEvent (1, &conin->WaitForKey, &index);
-    conin->ReadKeyStroke (conin, &key);
-    character = key.UnicodeChar;
+    bs = efi_systab->boot_services;
+    conin = efi_systab->con_in;
+    bs->wait_for_event (1, &conin->wait_for_key, &index);
+    conin->read_key_stroke (conin, &key);
+    character = key.unicode_char;
   }
   else
   {

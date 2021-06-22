@@ -355,3 +355,31 @@ unsigned long strtoul (const char *nptr, char **endptr, int base)
   /* Return value */
   return (negate ? -val : val);
 }
+
+char *
+strchr (const char *s, int c)
+{
+  do
+  {
+    if (*s == c)
+      return (char *) s;
+  }
+  while (*s++);
+
+  return 0;
+}
+
+char *
+strrchr (const char *s, int c)
+{
+  char *p = NULL;
+
+  do
+  {
+    if (*s == c)
+      p = (char *) s;
+  }
+  while (*s++);
+
+  return p;
+}

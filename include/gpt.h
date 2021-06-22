@@ -19,16 +19,8 @@
 #ifndef _GPT_PART_H
 #define _GPT_PART_H    1
 
+#include <ntboot.h>
 #include <stdint.h>
-
-struct packed_guid
-{
-  uint32_t data1;
-  uint16_t data2;
-  uint16_t data3;
-  uint8_t data4[8];
-} __attribute__ ((packed));
-typedef struct packed_guid packed_guid_t;
 
 typedef packed_guid_t gpt_part_guid_t;
 typedef packed_guid_t gpt_guid_t;

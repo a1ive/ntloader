@@ -28,8 +28,6 @@
  */
 
 #include "efi.h"
-#include "efi/Protocol/BlockIo.h"
-#include "efi/Protocol/DevicePath.h"
 
 struct vdisk_file;
 
